@@ -1,3 +1,0 @@
-C:\ST\STM32CubeCLT_1.19.0\CMake\bin\cmake.exe -E rm -f CMakeFiles\KindleDash.dir/objects.a
-C:\msys64\ucrt64\bin\ar.exe qc CMakeFiles\KindleDash.dir/objects.a @CMakeFiles\KindleDash.dir\objects1.rsp
-C:\msys64\ucrt64\bin\g++.exe -g -Wl,--whole-archive CMakeFiles\KindleDash.dir/objects.a -Wl,--no-whole-archive -o KindleDash.exe -Wl,--out-implib,libKindleDash.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\KindleDash.dir\linkLibs.rsp

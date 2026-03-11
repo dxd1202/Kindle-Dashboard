@@ -1,9 +1,11 @@
 {
     // ── CMake / 编译器 ──────────────────────────────────────────────────────────
+    // 锁定 MSYS2 ucrt64 的 cmake，完全脱离 STM32CubeCLT 的 cmake
+    "cmake.cmakePath": "C:/msys64/ucrt64/bin/cmake.exe",
     // 生成器：MinGW Makefiles，匹配 MSYS2 ucrt64 的 gcc/g++
     "cmake.generator": "MinGW Makefiles",
     "cmake.buildDirectory": "${workspaceFolder}/build",
-    // 显式锁定 MSYS2 的编译器，防止 PATH 中的 STM32CubeCLT 工具链干扰
+    // 锁定 MSYS2 的编译器
     "cmake.configureSettings": {
         "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
         "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"

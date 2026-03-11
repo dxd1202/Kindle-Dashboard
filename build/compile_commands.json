@@ -1,8 +1,14 @@
 [
 {
   "directory": "D:/Kindle-Dashboard/build",
-  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/KindleDash.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\KindleDash.dir\\src\\main.cpp.obj -c D:\\Kindle-Dashboard\\src\\main.cpp",
+  "command": "C:\\msys64\\ucrt64\\bin\\c++.exe -ID:/Kindle-Dashboard/include -std=gnu++17 -o CMakeFiles\\KindleDash.dir\\src\\main.cpp.obj -c D:\\Kindle-Dashboard\\src\\main.cpp",
   "file": "D:/Kindle-Dashboard/src/main.cpp",
-  "output": "CMakeFiles/KindleDash.dir/src/main.cpp.obj"
+  "output": "D:/Kindle-Dashboard/build/CMakeFiles/KindleDash.dir/src/main.cpp.obj"
+},
+{
+  "directory": "D:/Kindle-Dashboard/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\c++.exe -ID:/Kindle-Dashboard/include -std=gnu++17 -o CMakeFiles\\KindleDash.dir\\src\\renderer.cpp.obj -c D:\\Kindle-Dashboard\\src\\renderer.cpp",
+  "file": "D:/Kindle-Dashboard/src/renderer.cpp",
+  "output": "D:/Kindle-Dashboard/build/CMakeFiles/KindleDash.dir/src/renderer.cpp.obj"
 }
 ]

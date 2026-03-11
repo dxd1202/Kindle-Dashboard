@@ -1,0 +1,6 @@
+# ninja log v7
+4	283	7949215700732218	CMakeFiles/KindleDash.dir/src/main.cpp.obj	6116929652df5e6b
+10	497	7949215700783245	CMakeFiles/KindleDash.dir/src/renderer.cpp.obj	2c679cd6580a3996
+497	658	7949215705661294	KindleDash.exe	d6281a8030ce5d
+6	361	7949216708458594	CMakeFiles/KindleDash.dir/src/main.cpp.obj	6116929652df5e6b
+361	541	7949216712014952	KindleDash.exe	d6281a8030ce5d

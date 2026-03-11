@@ -13,4 +13,4 @@ include_directories(include)
 
 # 告诉编译器：我们要编译哪个文件？
 # 这里我们把 src/main.cpp 加入编译目标
-add_executable(KindleDash src/main.cpp)
+add_executable(KindleDash src/main.cpp src/renderer.cpp)
