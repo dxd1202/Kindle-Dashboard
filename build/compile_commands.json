@@ -1,0 +1,8 @@
+[
+{
+  "directory": "D:/Kindle-Dashboard/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles/KindleDash.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\KindleDash.dir\\src\\main.cpp.obj -c D:\\Kindle-Dashboard\\src\\main.cpp",
+  "file": "D:/Kindle-Dashboard/src/main.cpp",
+  "output": "CMakeFiles/KindleDash.dir/src/main.cpp.obj"
+}
+]

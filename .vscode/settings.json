@@ -1,0 +1,33 @@
+{
+    // ── CMake / 编译器 ──────────────────────────────────────────────────────────
+    // 生成器：MinGW Makefiles，匹配 MSYS2 ucrt64 的 gcc/g++
+    "cmake.generator": "MinGW Makefiles",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    // 显式锁定 MSYS2 的编译器，防止 PATH 中的 STM32CubeCLT 工具链干扰
+    "cmake.configureSettings": {
+        "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+    },
+    // ── clangd（IntelliSense + 格式化）─────────────────────────────────────────
+    // 关闭微软默认 C/C++ IntelliSense，完全交由 clangd 接管，避免两者冲突
+    "C_Cpp.intelliSenseEngine": "disabled",
+    // 使用 MSYS2 ucrt64 中的 clangd
+    "clangd.path": "C:/msys64/ucrt64/bin/clangd.exe",
+    "clangd.arguments": [
+        // 指向 CMake 生成的 compile_commands.json，让 clangd 知道所有头文件路径
+        "--compile-commands-dir=${workspaceFolder}/build",
+        // 后台建立索引，加速跳转和补全
+        "--background-index",
+        // 启用 clang-tidy 静态检查
+        "--clang-tidy"
+    ],
+    // 所有 C/C++ 文件统一使用 clangd 格式化，保存时自动触发
+    "[c]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.formatOnSave": true
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.formatOnSave": true
+    }
+}
