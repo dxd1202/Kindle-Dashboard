@@ -20,9 +20,5 @@ int main() {
         std::cout << "Failed to create output.png!" << std::endl;
     }
 
-    // 【最关键的一行】：加一个等待，防止窗口自动关闭！
-    std::cout << "Press Enter to exit..." << std::endl;
-    std::cin.get();
-
     return 0;
 }
