@@ -1,0 +1,22 @@
+{
+    "widgets": [
+        {
+            "content": "KINDLE DASHBOARD",
+            "x": 100,
+            "y": 150,
+            "size": 100
+        },
+        {
+            "content": "北京 晴 25°C",
+            "x": 100,
+            "y": 400,
+            "size": 80
+        },
+        {
+            "content": "AAPL: $185.32",
+            "x": 100,
+            "y": 550,
+            "size": 60
+        }
+    ]
+}

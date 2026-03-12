@@ -19,3 +19,23 @@ add_executable(Kindle-Dashboard
     src/main.cpp 
     src/renderer.cpp
 )
+
+set(ASSET_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/config.json"
+    "${CMAKE_CURRENT_SOURCE_DIR}/NOTO SANS SC.ttf"
+)
+
+# 遍历列表，为每个文件创建拷贝规则
+foreach(ASSET_FILE ${ASSET_FILES})
+    # 获取文件名（不带路径）
+    get_filename_component(ASSET_NAME ${ASSET_FILE} NAME)
+    
+    # 每次 Build 之后，如果源文件有变动，就自动拷贝到生成可执行文件的目录下
+    add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ASSET_FILE}
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSET_NAME}
+        COMMENT "正在同步资源文件: ${ASSET_NAME}"
+    )
+endforeach()

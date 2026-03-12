@@ -1,0 +1,25 @@
+{
+    "widgets": [
+        {
+            "id": "header",
+            "content": "KINDLE DASHBOARD",
+            "x": 0,
+            "y": 0,
+            "size": 60
+        },
+        {
+            "id": "weather",
+            "content": "霾 9°C 湿度:41%",
+            "x": 0,
+            "y": 200,
+            "size": 60
+        },
+        {
+            "id": "stock",
+            "content": "AAPL: $185.32",
+            "x": 0,
+            "y": 400,
+            "size": 60
+        }
+    ]
+}
