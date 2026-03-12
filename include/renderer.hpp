@@ -2,7 +2,7 @@
 #define RENDERER_HPP
 
 #include "stb_truetype.h"
-#include <cstdint>   // 必须有这个，否则 uint32_t 报错
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -14,7 +14,9 @@ struct Font
     Font(const std::string& path);
 };
 
-void draw_text(Font& font, unsigned char* bitmap, int width, int height, const char* text, int x,
-               int y, int size);
+// 【关键修改点】：第一个参数改为 fonts 列表
+void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width, int height,
+               const char* text, int x, int y, int size, bool center_tabs = false,
+               int tab_width = 0);
 
 #endif

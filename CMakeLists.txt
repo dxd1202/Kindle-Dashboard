@@ -23,6 +23,7 @@ add_executable(Kindle-Dashboard
 set(ASSET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/config.json"
     "${CMAKE_CURRENT_SOURCE_DIR}/NOTO SANS SC.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/qweather-icons.ttf"
 )
 
 # 遍历列表，为每个文件创建拷贝规则
