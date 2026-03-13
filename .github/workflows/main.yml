@@ -1,7 +1,7 @@
 name: Kindle Dashboard Auto Update
 on:
   schedule:
-    - cron: '5,35 0-17,22,23 * * *' # 每小时整点运行
+    - cron: '2,32 0-17,22,23 * * *' # 每小时整点运行
   workflow_dispatch:      # 允许手动点击运行
 
 jobs:
