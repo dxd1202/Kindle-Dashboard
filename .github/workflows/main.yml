@@ -25,11 +25,11 @@ jobs:
           echo "------------------------"
           
           # 强制检查关键文件是否存在
-          if [ ! -f "font_main.ttf" ]; then
-            echo "错误：找不到 font_main.ttf"
+          if [ ! -f "main-font.ttf" ]; then
+            echo "错误：找不到 main-font.ttf"
             exit 1
           fi
-          
+
           # 1. 从模板创建一个临时的 config.json，防止 C++ 构建失败
           cp config_template.json config.json
           # 2. 从 Secret 还原课表
