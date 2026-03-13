@@ -69,7 +69,7 @@ def main():
         build_dir = os.path.join(os.getcwd(), "build")
         exe_path = os.path.join(build_dir, exe_name)
 
-    assets = ["config.json", "main-font.TTF", "font_icons.ttf", "qweather-icons.json"]
+    assets = ["config.json", "main-font.TTF", "qweather-icons.ttf", "qweather-icons.json"]
     
     print("📂 正在同步资源文件到运行目录...")
     for asset in assets:
