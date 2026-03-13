@@ -24,7 +24,7 @@
         },
         {
             "id": "weather_now",
-            "font": "main-font.TTF",
+            "font": "main-font.ttf",
             "content": "a",
             "x": 180,
             "y": 22,
@@ -42,7 +42,7 @@
         },
         {
             "id": "stock",
-            "font": "main-font.TTF",
+            "font": "main-font.ttf",
             "content": "a",
             "x": 15,
             "y": 820,
@@ -52,7 +52,7 @@
         },
         {
             "id": "timetable",
-            "font": "main-font.TTF",
+            "font": "main-font.ttf",
             "content": "a",
             "x": 600,
             "y": 80,

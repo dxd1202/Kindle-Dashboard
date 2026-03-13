@@ -25,8 +25,8 @@ jobs:
           echo "------------------------"
           
           # 强制检查关键文件是否存在
-          if [ ! -f "main-font.TTF" ]; then
-            echo "错误：找不到 main-font.TTF"
+          if [ ! -f "main-font.ttf" ]; then
+            echo "错误：找不到 main-font.ttf"
             exit 1
           fi
 
