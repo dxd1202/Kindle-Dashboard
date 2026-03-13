@@ -3,9 +3,9 @@ import json
 import os
 
 # ================= 配置区 =================
-API_KEY = "e3b714910ce74b1bbdc2d7bfd802cffd"
+API_KEY = os.environ.get("WEATHER_KEY","e3b714910ce74b1bbdc2d7bfd802cffd")
+BASE_URL = os.environ.get("WEATHER_HOST","https://pt4wcutkrg.re.qweatherapi.com/v7/weather")
 CITY_ID = "101010200"  # 海淀
-BASE_URL = "https://pt4wcutkrg.re.qweatherapi.com/v7/weather"
 ICON_DATA_FILE = "qweather-icons.json"
 # ==========================================
 
