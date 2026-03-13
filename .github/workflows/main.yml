@@ -61,7 +61,6 @@ jobs:
         # 3. 创建一个 .nojekyll 文件，防止 GitHub Pages 过滤特殊字符
         run: |
           mkdir -p public
-<<<<<<< HEAD
 
           if [ -f "output.png" ]; then
             cp output.png public/
@@ -73,9 +72,6 @@ jobs:
             exit 1
           fi
           
-=======
-          cp build/output.png public/
->>>>>>> a8801b4094a1dca34369d92d1d42d84d1aa1b284
           touch public/.nojekyll
           echo "--- 检查图片是否存在 ---"
           ls -lh public/
