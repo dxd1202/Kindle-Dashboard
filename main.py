@@ -7,6 +7,7 @@ load_dotenv()
 import json
 import platform
 import subprocess
+import shutil
 from feeders import clock, weather, stock, timetable
 
 # 配置文件路径
@@ -60,9 +61,25 @@ def main():
 
     exe_name = "Kindle-Dashboard"
     if platform.system() == "Windows":
-        exe_path = os.path.join("build", f"{exe_name}.exe")
+        build_dir = os.path.join(os.getcwd(), "build", "Debug") # 适配 Windows 可能的路径
+        if not os.path.exists(build_dir):
+            build_dir = os.path.join(os.getcwd(), "build")
+        exe_path = os.path.join(build_dir, f"{exe_name}.exe")
     else:
-        exe_path = os.path.join("build", exe_name) # Linux 下没有 .exe
+        build_dir = os.path.join(os.getcwd(), "build")
+        exe_path = os.path.join(build_dir, exe_name)
+
+    assets = ["config.json", "main-font.ttf", "font_icons.ttf", "qweather-icons.json"]
+    
+    print("📂 正在同步资源文件到运行目录...")
+    for asset in assets:
+        if os.path.exists(asset):
+            try:
+                shutil.copy2(asset, build_dir) # 拷贝并保留元数据
+                print(f"  - 已拷贝: {asset}")
+            except Exception as e:
+                print(f"  - 拷贝失败 {asset}: {e}")
+    # ---------------------------------------------------------
 
     # 4. 自动调用 C++ 渲染引擎 (假设你已经编译好了)
     # 注意：我们的 CMake 会自动把 config.json 考到 build，
