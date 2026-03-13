@@ -71,8 +71,28 @@ int main() {
             }
         }
 
-        if (stbi_write_png("output.png", width, height, 1, bitmap.data(), width)) {
-            std::cout << "🎉 看板生成成功：output.png" << std::endl;
+        // 在这里，bitmap 已经是渲染好的 1448x1077 横向图了
+
+        // 定义目标尺寸（旋转后）
+        const int final_w = 1077;
+        const int final_h = 1448;
+
+        // 创建一个新的旋转后的 bitmap 容器
+        std::vector<unsigned char> rotated_bitmap(final_w * final_h, 255);
+
+        // 执行 90 度顺时针旋转
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                // 旋转算法：
+                // 新的坐标 (new_x, new_y) = (height - 1 - y, x)
+                // 新的 index = new_y * final_w + new_x
+                rotated_bitmap[x * final_w + (height - 1 - y)] = bitmap[y * width + x];
+            }
+        }
+
+        // 修改保存逻辑：使用新的尺寸和新的 rotated_bitmap
+        if (stbi_write_png("output.png", final_w, final_h, 1, rotated_bitmap.data(), final_w)) {
+            std::cout << "🎉 看板生成成功 (已旋转): output.png" << std::endl;
         }
         else {
             throw std::runtime_error("Failed to write PNG");
