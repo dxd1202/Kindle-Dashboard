@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import subprocess
 from feeders import clock, weather, stock, timetable # 以后这里可以加 from feeders import stock, study
 
@@ -27,6 +28,12 @@ def main():
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
     print("✅ 配置文件已保存。")
+
+    exe_name = "Kindle-Dashboard"
+    if platform.system() == "Windows":
+        exe_path = os.path.join("build", f"{exe_name}.exe")
+    else:
+        exe_path = os.path.join("build", exe_name) # Linux 下没有 .exe
 
     # 4. 自动调用 C++ 渲染引擎 (假设你已经编译好了)
     # 注意：我们的 CMake 会自动把 config.json 考到 build，
