@@ -1,12 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pytz
 
 def get_current_time_info():
     """获取格式化的当前日期、星期和时间"""
-    # 1. 显式指定北京时区
-    tz = pytz.timezone('Asia/Shanghai')
-    # 1. 获取当前时间对象
-    now = datetime.now()
+    # 1. 获取当前 UTC 时间
+    # 2. 创建一个 UTC+8 的时区对象
+    beijing_tz = timezone(timedelta(hours=8))
+    
+    # 3. 获取带时区的当前时间
+    now = datetime.now(beijing_tz)
     
     # 2. 定义星期映射
     weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
