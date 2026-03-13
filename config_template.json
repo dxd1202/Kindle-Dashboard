@@ -1,5 +1,6 @@
 {
     "widgets": [
+<<<<<<< HEAD
         {
             "id": "header",
             "content": "a",
@@ -58,5 +59,13 @@
             "y": 80,
             "size": 48
         }
+=======
+        { "id": "clock", "x": 620, "y": 20, "size": 60, "tab_width": 800 },
+        { "id": "weather_icon", "font": "qweather-icons.ttf", "x": 30, "y": 35, "size": 120 },
+        { "id": "weather_now", "x": 180, "y": 22, "size": 56 },
+        { "id": "weather_hourly", "font": "qweather-icons.ttf", "x": 20, "y": 190, "size": 32, "center_tabs": true, "tab_width": 235 },
+        { "id": "stock", "x": 15, "y": 820, "size": 36, "center_tabs": true, "tab_width": 710 },
+        { "id": "timetable", "x": 600, "y": 80, "size": 48 }
+>>>>>>> 5633f9828341d28c2b006277710105bb2a380af4
     ]
 }
