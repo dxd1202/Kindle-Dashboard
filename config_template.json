@@ -1,0 +1,62 @@
+{
+    "widgets": [
+        {
+            "id": "header",
+            "content": "a",
+            "x": 670,
+            "y": 1015,
+            "size": 48
+        },
+        {
+            "id": "clock",
+            "content": "a",
+            "x": 620,
+            "y": 20,
+            "size": 60
+        },
+        {
+            "id": "weather_icon",
+            "font": "qweather-icons.ttf",
+            "content": "a",
+            "x": 30,
+            "y": 35,
+            "size": 120
+        },
+        {
+            "id": "weather_now",
+            "font": "NOTO SANS SC.ttf",
+            "content": "a",
+            "x": 180,
+            "y": 22,
+            "size": 56
+        },
+        {
+            "id": "weather_hourly",
+            "font": "qweather-icons.ttf",
+            "content": "a",
+            "x": 20,
+            "y": 190,
+            "size": 50,
+            "center_tabs": true,
+            "tab_width": 96
+        },
+        {
+            "id": "stock",
+            "font": "NOTO SANS SC.ttf",
+            "content": "a",
+            "x": 15,
+            "y": 820,
+            "size": 36,
+            "center_tabs": false,
+            "tab_width": 150
+        },
+        {
+            "id": "timetable",
+            "font": "NOTO SANS SC.ttf",
+            "content": "a",
+            "x": 600,
+            "y": 80,
+            "size": 48
+        }
+    ]
+}
