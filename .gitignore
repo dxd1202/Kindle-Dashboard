@@ -1,44 +1,54 @@
-# Prerequisites
-*.d
+# =================================================================
+# Kindle-Dashboard 终极 .gitignore 模板
+# =================================================================
 
-# Compiled Object files
-*.slo
-*.lo
+# --- 1. 编译产物 (Build Artifacts) ---
+build/
+bin/
+obj/
+*.exe
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
+*.dll
 *.so
 *.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
 *.out
 *.app
+*.ilk
+*.pdb
+*.exp
+*.lib
+*.a
 
-# debug information files
-*.dwo
+# --- 2. 语言服务器与编辑器缓存 (LSP & IDE) ---
+.cache/
+.vscode/
+# compile_commands.json 记录了本地绝对路径，换台电脑就没用了，必须忽略
+compile_commands.json
 
-# private info
+# --- 3. 个人隐私与本地配置 (Private Data) ---
+# 包含 API Key 的环境文件
+.env
+# 包含你个人信息的动态配置文件
 config.json
+# 包含你个人课表的隐私文件
+*.ics
+
+# --- 4. 运行结果 (Outputs) ---
+# 既然是自动生成的看板图，不需要传到代码仓库里
+output.png
+
+# --- 5. Python 相关 (Python Runtime) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# --- 6. 操作系统产生的垃圾文件 (OS Junk) ---
+.DS_Store
+Thumbs.db
+desktop.ini
