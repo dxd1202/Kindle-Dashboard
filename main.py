@@ -2,10 +2,13 @@ import json
 import os
 import platform
 import subprocess
+from dotenv import load_dotenv
 from feeders import clock, weather, stock, timetable # 以后这里可以加 from feeders import stock, study
 
 # 配置文件路径
 CONFIG_FILE = "config.json"
+
+load_dotenv()
 
 def main():
     print("=== Kindle Dashboard 自动化流程启动 ===")

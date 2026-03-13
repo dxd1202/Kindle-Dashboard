@@ -1,6 +1,7 @@
 from icalendar import Calendar
 from datetime import datetime
 import pytz
+import os
 
 # ================= 配置区 =================
 ICS_FILE = "dxdcourses2025Spring.ics"
@@ -10,6 +11,8 @@ DIVIDER = "┠──────────────────────
 # ==========================================
 
 def get_weekly_schedule():
+    if not os.path.exists(ICS_FILE):
+        return "未找到课表文件"
     print("[课表模块] 正在生成全周分割线看板...")
     try:
         with open(ICS_FILE, 'rb') as f:

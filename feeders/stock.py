@@ -1,23 +1,14 @@
 import yfinance as yf
+import os
+import ast
 
 # ================= 配置区 =================
-# 在这里定义你想看的资产：(代码, 显示名称)
-WATCHLIST = [
-    ("000001.SS", "上证指数"),
-    ("399001.SZ", "深证成指"),
-    ("000680.SS", "科创综指"),
-    ("399006.SZ", "创业板指"),
-    ("^IXIC", "纳斯达克"),
-    ("^HSI", "香港恒生"),
-    ("510330.SS", "沪深300华夏"),
-    ("513100.SS", "纳斯达克华泰"),
-    ("513130.SS", "恒生科技华泰"),
-    ("588000.SS", "科创50华夏"),
-    ("515220.SS", "煤炭华泰"),
-    ("513350.SS", "标普油气富国"),
-    ("518880.SS", "黄金华安"),
-    ("516510.SS", "云计算易方达"),
-]
+# 从环境变量读取字符串，并用 ast 转换回 Python 列表对象
+watchlist_raw = os.getenv("STOCK_LIST")
+if watchlist_raw:
+    WATCHLIST = ast.literal_eval(watchlist_raw)
+else:
+    WATCHLIST = []
 # ==========================================
 
 def get_stock_data(symbol, friendly_name):
