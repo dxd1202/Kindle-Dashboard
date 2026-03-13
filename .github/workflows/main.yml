@@ -19,6 +19,17 @@ jobs:
 
       - name: Prepare Config and ICS
         run: |
+          # 打印当前目录所有文件，确认文件名和大小写
+          echo "--- 当前目录文件列表 ---"
+          ls -F
+          echo "------------------------"
+          
+          # 强制检查关键文件是否存在
+          if [ ! -f "font_main.ttf" ]; then
+            echo "错误：找不到 font_main.ttf"
+            exit 1
+          fi
+          
           # 1. 从模板创建一个临时的 config.json，防止 C++ 构建失败
           cp config_template.json config.json
           # 2. 从 Secret 还原课表
