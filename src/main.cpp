@@ -24,7 +24,7 @@ int main() {
         configFile >> config;
 
         std::map<std::string, std::unique_ptr<Font>> fontCache;
-        std::string defFont = "NOTO SANS SC.ttf";
+        std::string defFont = "main-font.ttf";
         std::string iconFont = "qweather-icons.ttf";
 
         // 预加载核心字体

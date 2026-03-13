@@ -22,7 +22,7 @@ add_executable(Kindle-Dashboard
 
 set(ASSET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/config.json"
-    "${CMAKE_CURRENT_SOURCE_DIR}/NOTO SANS SC.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/main-font.ttf"
     "${CMAKE_CURRENT_SOURCE_DIR}/qweather-icons.ttf"
 )
 
