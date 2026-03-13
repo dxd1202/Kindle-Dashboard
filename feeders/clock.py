@@ -1,7 +1,10 @@
 from datetime import datetime
+import pytz
 
 def get_current_time_info():
     """获取格式化的当前日期、星期和时间"""
+    # 1. 显式指定北京时区
+    tz = pytz.timezone('Asia/Shanghai')
     # 1. 获取当前时间对象
     now = datetime.now()
     

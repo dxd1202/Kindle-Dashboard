@@ -2,7 +2,7 @@
     "widgets": [
         {
             "id": "header",
-            "content": "a",
+            "content": "Kindle-Dashboard by dxd | March 2026ヾ(≧ ▽ ≦)ゝ",
             "x": 670,
             "y": 1015,
             "size": 48
@@ -36,7 +36,7 @@
             "content": "a",
             "x": 20,
             "y": 190,
-            "size": 50,
+            "size": 48,
             "center_tabs": true,
             "tab_width": 96
         },
