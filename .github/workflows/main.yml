@@ -1,0 +1,50 @@
+name: Kindle Dashboard Auto Update
+on:
+  schedule:
+    - cron: '5,35 0-17,22,23 * * *' # 每小时整点运行
+  workflow_dispatch:      # 允许手动点击运行
+
+jobs:
+  build_and_run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++
+          python -m pip install requests yfinance icalendar pytz python-dotenv
+
+      - name: Restore Private Files
+        # 从 Secret 还原 ics 文件
+        run: |
+          echo "${{ secrets.ICS_DATA }}" > dxdcourses2025Spring.ics
+
+      - name: Build C++ Renderer
+        run: |
+          mkdir build && cd build
+          cmake ..
+          make
+
+      - name: Run Dashboard Engine
+        # 这一步是核心：将 Secrets 注入环境变量供 Python 使用
+        env:
+          WEATHER_KEY: ${{ secrets.WEATHER_KEY }}
+          WEATHER_HOST: ${{ secrets.WEATHER_HOST }}
+          STOCK_LIST: ${{ secrets.STOCK_LIST }}
+          ICS_DATA: ${{ secrets.ICS_DATA }} # 映射这一行
+          PYTHONIOENCODING: utf-8
+        run: |
+          # 1. 运行 python 抓取数据生成 config.json
+          python main.py
+          # 此时 build/Kindle-Dashboard 应该已经生成了 output.png
+
+      - name: Deploy to GitHub Pages
+        # 使用此插件将图片推送到 gh-pages 分支
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build # 图片在 build 目录下
+          publish_branch: gh-pages

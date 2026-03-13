@@ -1,12 +1,17 @@
 import yfinance as yf
 import os
-import ast
+import json
 
 # ================= 配置区 =================
 # 从环境变量读取字符串，并用 ast 转换回 Python 列表对象
 watchlist_raw = os.getenv("STOCK_LIST")
 if watchlist_raw:
-    WATCHLIST = ast.literal_eval(watchlist_raw)
+    try:
+        # 使用 json.loads 解析
+        WATCHLIST = json.loads(watchlist_raw)
+    except Exception as e:
+        print(f"[股市模块] JSON 解析失败，请检查 .env 格式: {e}")
+        WATCHLIST = []
 else:
     WATCHLIST = []
 # ==========================================

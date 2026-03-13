@@ -3,6 +3,8 @@ import json
 import os
 
 # ================= 配置区 =================
+from dotenv import load_dotenv
+load_dotenv()
 API_KEY = os.getenv("WEATHER_KEY")
 BASE_URL = os.getenv("WEATHER_HOST")
 CITY_ID = "101010200"  # 海淀

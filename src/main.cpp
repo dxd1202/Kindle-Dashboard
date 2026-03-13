@@ -1,120 +1,86 @@
+#include "renderer.hpp"
 #include <fstream>
 #include <iostream>
+#include <json.hpp>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 
-// 1. 引入 JSON 库
-#include <json.hpp>
-using json = nlohmann::json;
-
-// 2. 引入渲染引擎
-#include "renderer.hpp"
-
-// 3. 引入图片保存库
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-Font mainFont("NOTO SANS SC.ttf");
-Font iconFont("qweather-icons.ttf");
-
-std::vector<Font*> fontList = {&mainFont, &iconFont};
+using json = nlohmann::json;
 
 int main() {
     try {
-        // --- 1. 初始化画布参数 ---
-        const int width = 1448;
-        const int height = 1077;
-        std::vector<unsigned char> bitmap(width * height, 255);   // 白色背景
+        const int width = 1448, height = 1077;
+        std::vector<unsigned char> bitmap(width * height, 255);
 
-        // --- 2. 解析配置文件 ---
         std::ifstream configFile("config.json");
-        if (!configFile.is_open()) {
-            throw std::runtime_error("无法找到 config.json 文件！");
-        }
+        if (!configFile.is_open()) throw std::runtime_error("config.json not found!");
         json config;
         configFile >> config;
 
-        // --- 3. 字体管理器 (缓存) ---
-        // 这里的逻辑是：文件名 -> 字体对象的映射
-        // 使用 unique_ptr 是为了方便管理内存
         std::map<std::string, std::unique_ptr<Font>> fontCache;
+        std::string defFont = "NOTO SANS SC.ttf";
+        std::string iconFont = "qweather-icons.ttf";
 
-        // 1. 先确保常用的核心字体都已经加载进 fontCache
-        // 建议在循环外手动加载一下，保证它们一定在内存里
-        std::string defaultFontName = "NOTO SANS SC.ttf";
-        std::string iconFontName = "qweather-icons.ttf";
+        // 预加载核心字体
+        fontCache[defFont] = std::make_unique<Font>(defFont);
+        fontCache[iconFont] = std::make_unique<Font>(iconFont);
 
-        if (fontCache.find(defaultFontName) == fontCache.end())
-            fontCache[defaultFontName] = std::make_unique<Font>(defaultFontName);
-        if (fontCache.find(iconFontName) == fontCache.end())
-            fontCache[iconFontName] = std::make_unique<Font>(iconFontName);
+        std::cout << "--- 正在解析布局并渲染 ---" << std::endl;
 
-        // 2. 开始渲染循环
-        for (const auto& item : config["widgets"]) {
-            std::string content = item.value("content", "");
-            if (content.empty()) continue;
+        if (config.contains("widgets") && config["widgets"].is_array()) {
+            for (const auto& item : config["widgets"]) {
+                std::string content = item.value("content", "");
+                if (content.empty()) continue;
 
-            // 获取当前组件的首选字体
-            std::string preferredFont = item.value("font", defaultFontName);
-
-            // 如果首选字体没加载，加载它
-            if (fontCache.find(preferredFont) == fontCache.end()) {
-                try {
-                    fontCache[preferredFont] = std::make_unique<Font>(preferredFont);
+                std::string fontName = item.value("font", defFont);
+                if (fontCache.find(fontName) == fontCache.end()) {
+                    try {
+                        fontCache[fontName] = std::make_unique<Font>(fontName);
+                    }
+                    catch (...) {
+                        fontName = defFont;
+                    }
                 }
-                catch (...) {
-                    preferredFont = defaultFontName;
-                }
+
+                // 构造优先级字体链
+                std::vector<Font*> activeFonts;
+                activeFonts.push_back(fontCache[fontName].get());
+                if (fontName != iconFont) activeFonts.push_back(fontCache[iconFont].get());
+                if (fontName != defFont) activeFonts.push_back(fontCache[defFont].get());
+
+                std::cout << "  > 渲染: " << item.value("id", "none")
+                          << " | 居中: " << (item.value("center_tabs", false) ? "开" : "关")
+                          << " | 宽: " << item.value("tab_width", 0) << std::endl;
+
+                draw_text(activeFonts,
+                          bitmap.data(),
+                          width,
+                          height,
+                          content.c_str(),
+                          item.value("x", 0),
+                          item.value("y", 0),
+                          item.value("size", 40),
+                          item.value("center_tabs", false),
+                          item.value("tab_width", 0));
             }
-
-            // --- 【核心修改】：构建当前组件的“备选字体链” ---
-            std::vector<Font*> activeFonts;
-            activeFonts.push_back(fontCache[preferredFont].get());   // 第一优先级：组件指定的字体
-
-            // 如果首选不是图标字体，把图标字体加到后面作为备选
-            if (preferredFont != iconFontName) {
-                activeFonts.push_back(fontCache[iconFontName].get());
-            }
-            // 如果首选不是默认字体，把默认中文字体也加上
-            if (preferredFont != defaultFontName) {
-                activeFonts.push_back(fontCache[defaultFontName].get());
-            }
-
-            // 提取其他参数
-            int x = item.value("x", 0);
-            int y = item.value("y", 0);
-            int size = item.value("size", 40);
-            bool center_tabs = item.value("center_tabs", false);
-            int tab_width = item.value("tab_width", 0);
-
-            // --- 【核心调用】：现在参数匹配了 ---
-            draw_text(activeFonts,
-                      bitmap.data(),
-                      width,
-                      height,
-                      content.c_str(),
-                      x,
-                      y,
-                      size,
-                      center_tabs,
-                      tab_width);
         }
 
-        // --- 5. 保存结果 ---
         if (stbi_write_png("output.png", width, height, 1, bitmap.data(), width)) {
-            std::cout << "\n🎉 看板生成成功：output.png" << std::endl;
+            std::cout << "🎉 看板生成成功：output.png" << std::endl;
         }
         else {
-            throw std::runtime_error("写入图片失败！");
+            throw std::runtime_error("Failed to write PNG");
         }
     }
     catch (const std::exception& e) {
-        std::cerr << "\n[致命错误] " << e.what() << std::endl;
+        std::cerr << "[错误] " << e.what() << std::endl;
         return 1;
     }
-
     return 0;
 }

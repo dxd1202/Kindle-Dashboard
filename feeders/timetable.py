@@ -11,9 +11,21 @@ DIVIDER = "┠──────────────────────
 # ==========================================
 
 def get_weekly_schedule():
-    if not os.path.exists(ICS_FILE):
-        return "未找到课表文件"
+    
     print("[课表模块] 正在生成全周分割线看板...")
+
+    # 1. 检查物理文件是否存在 (本地运行通常走这里)
+    if not os.path.exists(ICS_FILE):
+        # 2. 如果文件不存在，检查环境变量 (GitHub Actions 运行走这里)
+        ics_content = os.getenv("ICS_DATA")
+        if ics_content:
+            print("[课表模块] 检测到环境变量 ICS_DATA，正在生成临时文件...")
+            with open(ICS_FILE, "w", encoding="utf-8") as f:
+                f.write(ics_content)
+        else:
+            print("[课表模块] 错误：既找不到本地文件，也找不到环境变量数据！")
+            return "未找到课表数据"
+        
     try:
         with open(ICS_FILE, 'rb') as f:
             gcal = Calendar.from_ical(f.read())
