@@ -69,7 +69,7 @@ def main():
         build_dir = os.path.join(os.getcwd(), "build")
         exe_path = os.path.join(build_dir, exe_name)
 
-    assets = ["config.json", "main-font.ttf", "font_icons.ttf", "qweather-icons.json"]
+    assets = ["config.json", "main-font.TTF", "font_icons.ttf", "qweather-icons.json"]
     
     print("📂 正在同步资源文件到运行目录...")
     for asset in assets:
@@ -95,11 +95,14 @@ def main():
             capture_output=True, 
             text=True, 
             encoding='utf-8',   # 强制使用 UTF-8 解码
-            errors='ignore'      # 万一还有解不出来的字节，直接忽略，不报错
+            errors='ignore',      # 万一还有解不出来的字节，直接忽略，不报错
+            cwd=build_dir
         )
-        print("--- C++ 引擎输出 ---")
+        print("--- C++ 标准输出 (stdout) ---")
         print(result.stdout)
-        print("--------------------")
+        print("--- C++ 错误输出 (stderr) ---")
+        print(result.stderr) # 【关键】：把错误打印出来！
+        print("----------------------------")
     except Exception as e:
         print(f"❌ 运行失败: {e}")
 
