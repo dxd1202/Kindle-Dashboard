@@ -17,9 +17,11 @@ jobs:
           sudo apt-get install -y cmake g++
           python -m pip install requests yfinance icalendar pytz python-dotenv
 
-      - name: Restore Private Files
-        # 从 Secret 还原 ics 文件
+      - name: Prepare Config and ICS
         run: |
+          # 1. 从模板创建一个临时的 config.json，防止 C++ 构建失败
+          cp config_template.json config.json
+          # 2. 从 Secret 还原课表
           echo "${{ secrets.ICS_DATA }}" > dxdcourses2025Spring.ics
 
       - name: Build C++ Renderer
