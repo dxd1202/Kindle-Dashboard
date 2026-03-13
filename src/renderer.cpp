@@ -8,7 +8,7 @@
 
 const float LINE_HEIGHT = 0.95;
 const float UPSCALE = 1.2;
-const float DOWNSCALE = 0.9;
+const float DOWNSCALE = 0.85;
 
 // 1. 字体加载逻辑
 Font::Font(const std::string& path) {

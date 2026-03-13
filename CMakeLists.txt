@@ -35,8 +35,8 @@ foreach(ASSET_FILE ${ASSET_FILES})
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${ASSET_FILE}
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSET_NAME}
+        "${ASSET_FILE}"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSET_NAME}"
         COMMENT "正在同步资源文件: ${ASSET_NAME}"
     )
 endforeach()
