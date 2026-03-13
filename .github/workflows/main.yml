@@ -54,6 +54,28 @@ jobs:
           python main.py
           # 此时 build/Kindle-Dashboard 应该已经生成了 output.png
 
+      - name: Prepare Public Dir
+        # 这一步非常关键：
+        # 1. 创建 public 文件夹
+        # 2. 把生成的图片从 build 拷贝出来
+        # 3. 创建一个 .nojekyll 文件，防止 GitHub Pages 过滤特殊字符
+        run: |
+          mkdir -p public
+
+          if [ -f "output.png" ]; then
+            cp output.png public/
+          elif [ -f "build/output.png" ]; then
+            cp build/output.png public/
+          else
+            echo "错误：在任何地方都找不到 output.png！"
+            ls -R # 打印所有文件列表，方便我们最后“捉鬼”
+            exit 1
+          fi
+          
+          touch public/.nojekyll
+          echo "--- 检查图片是否存在 ---"
+          ls -lh public/
+
       - name: Deploy to GitHub Pages
         # 使用此插件将图片推送到 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v3
