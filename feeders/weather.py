@@ -50,7 +50,7 @@ def get_weather_now():
         if data['code'] == "200":
             n = data['now']
             icon = get_icon_char(n['icon'])
-            text = f"当前({n['obsTime'][11:16]})     ▷{n['text']}    {n['temp']}°C\n湿度{n['humidity']}%      {n['windDir']}{n['windScale']}级\n体感{n['feelsLike']}°C"
+            text = f"(海淀{n['obsTime'][11:16]})     ▷{n['text']}    {n['temp']}°C\n湿度{n['humidity']}%      {n['windDir']}{n['windScale']}级\n体感{n['feelsLike']}°C"
             return icon, text
     except Exception as e:
         print(f"[天气] 实时获取失败: {e}")
@@ -93,7 +93,7 @@ def get_weather_hourly():
 
             # --- 2. 【核心新增】：在列表最后添加一行小字更新时间 ---
             # 使用 ↓ 缩小字号，让它看起来像个页脚（Footer）
-            footer = f"↓───── (数据更新于 {update_time_display}) ─────○"
+            footer = f"↓────── (数据更新于 {update_time_display}) ──────○"
             final_lines.append(footer)
             
             return "\n".join(final_lines)
