@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/build",
+  "command": "/usr/bin/c++  -I/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/include -std=gnu++17 -o CMakeFiles/Kindle-Dashboard.dir/src/main.cpp.o -c /home/runner/work/Kindle-Dashboard/Kindle-Dashboard/src/main.cpp",
+  "file": "/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/src/main.cpp",
+  "output": "CMakeFiles/Kindle-Dashboard.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/build",
+  "command": "/usr/bin/c++  -I/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/include -std=gnu++17 -o CMakeFiles/Kindle-Dashboard.dir/src/renderer.cpp.o -c /home/runner/work/Kindle-Dashboard/Kindle-Dashboard/src/renderer.cpp",
+  "file": "/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/src/renderer.cpp",
+  "output": "CMakeFiles/Kindle-Dashboard.dir/src/renderer.cpp.o"
+}
+]

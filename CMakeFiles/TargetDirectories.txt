@@ -1,0 +1,3 @@
+/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/build/CMakeFiles/Kindle-Dashboard.dir
+/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/build/CMakeFiles/edit_cache.dir
+/home/runner/work/Kindle-Dashboard/Kindle-Dashboard/build/CMakeFiles/rebuild_cache.dir
