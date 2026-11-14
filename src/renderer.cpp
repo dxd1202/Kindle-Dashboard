@@ -43,9 +43,20 @@ static uint32_t next_utf8(const char*& str) {
     return 0;
 }
 
+static Font* glyph_font(const std::vector<Font*>& fonts, uint32_t codepoint) {
+    for (auto* font : fonts) {
+        if (stbtt_FindGlyphIndex(&font->info, codepoint) != 0) return font;
+    }
+    return fonts.front();
+}
+
+static int glyph_y_offset(uint32_t codepoint) {
+    return codepoint >= 0xF100 && codepoint < 0xFF00 ? 10 : 0;
+}
+
 // 测量宽度函数：必须支持动态字号跟踪
-int get_text_width(const std::vector<Font*>& fonts, const std::string& text, int base_size) {
-    int current_size = base_size;
+static int get_text_width(const std::vector<Font*>& fonts, const std::string& text,
+                          int base_size, int current_size) {
     int total_w = 0;
     const char* ptr = text.c_str();
 
@@ -67,25 +78,78 @@ int get_text_width(const std::vector<Font*>& fonts, const std::string& text, int
         }
 
         // 信号符不计入宽度
-        if (cp == 9655 || cp == 9472 || cp == 9504) continue;
+        if (cp == 9655) continue;
 
         // 遍历所有字体找宽度
-        for (auto* f : fonts) {
-            if (stbtt_FindGlyphIndex(&f->info, cp) != 0) {
-                float s = stbtt_ScaleForPixelHeight(&f->info, (float)current_size);
-                int adv, lsb;
-                stbtt_GetCodepointHMetrics(&f->info, cp, &adv, &lsb);
-                total_w += (int)(adv * s);
-                break;
-            }
-        }
+        auto* font = glyph_font(fonts, cp);
+        float scale = stbtt_ScaleForPixelHeight(&font->info, (float)current_size);
+        int advance, lsb;
+        stbtt_GetCodepointHMetrics(&font->info, cp, &advance, &lsb);
+        total_w += (int)(advance * scale);
     }
     return total_w;
 }
 
+int measure_text(const std::vector<Font*>& fonts, const std::string& text, int size) {
+    return get_text_width(fonts, text, size, size);
+}
+
+std::vector<std::string> wrap_todo(const std::vector<Font*>& fonts, const std::string& text,
+                                  int size, int width) {
+    if (measure_text(fonts, text, size) <= width) return {text};
+
+    const char* start = text.c_str();
+    const auto fitting_end = [&](const char* begin, int limit) {
+        const char* cursor = begin;
+        const char* end = begin;
+        const char* word_end = begin;
+        while (*cursor) {
+            if (*cursor == ' ' && end == cursor) word_end = cursor;
+            next_utf8(cursor);
+            if (measure_text(fonts, std::string(begin, cursor), size) > limit) break;
+            end = cursor;
+        }
+        return *cursor && word_end > begin ? word_end : end;
+    };
+
+    const char* end = fitting_end(start, width);
+    std::string first(start, end);
+    while (*end == ' ') ++end;
+    std::string second(end);
+    if (measure_text(fonts, second, size) > width) {
+        const auto prefix = fitting_end(end, width - measure_text(fonts, "…", size));
+        second = std::string(end, prefix) + "…";
+    }
+    return {first, second};
+}
+
+// Measure the ink bounds of a single line, including the weather icon offset.
+int text_center_offset(const std::vector<Font*>& fonts, const std::string& text, int size) {
+    int ascent;
+    stbtt_GetFontVMetrics(&fonts.front()->info, &ascent, nullptr, nullptr);
+    const int baseline = ascent * stbtt_ScaleForPixelHeight(&fonts.front()->info, size);
+    int top = 0, bottom = 0;
+    bool has_ink = false;
+    const char* ptr = text.c_str();
+    while (*ptr) {
+        const uint32_t cp = next_utf8(ptr);
+        if (cp == 9655) continue;
+        auto* font = glyph_font(fonts, cp);
+        const float scale = stbtt_ScaleForPixelHeight(&font->info, size);
+        int x0, y0, x1, y1;
+        stbtt_GetCodepointBitmapBox(&font->info, cp, scale, scale, &x0, &y0, &x1, &y1);
+        if (x0 == x1 || y0 == y1) continue;
+        const int offset = glyph_y_offset(cp);
+        top = has_ink ? std::min(top, y0 + offset) : y0 + offset;
+        bottom = has_ink ? std::max(bottom, y1 + offset) : y1 + offset;
+        has_ink = true;
+    }
+    return has_ink ? baseline + (top + bottom) / 2 : 0;
+}
+
 // 3. 核心绘图引擎
 void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width, int height,
-               const char* text, int x, int y, int size, bool center_tabs, int tab_width) {
+               const char* text, int x, int y, int size, bool center_tabs, int tab_width, int ink) {
     if (fonts.empty()) return;
 
     int base_size = size;
@@ -103,6 +167,7 @@ void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width
     update_size(base_size);
 
     int pen_x = x;
+    int column = 0;
     int current_y = y;
     const char* ptr = text;
 
@@ -118,7 +183,7 @@ void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width
             segment += *temp_ptr++;
         }
         // 注意：get_text_width 也需要更新以匹配这个多字体逻辑，见下文
-        int segment_w = get_text_width(fonts, segment, base_size);
+        int segment_w = get_text_width(fonts, segment, base_size, current_size);
         int offset = (tab_width - segment_w) / 2;
         if (offset > 0) pen_x += offset;
     };
@@ -151,6 +216,7 @@ void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width
         // 2. 处理换行
         if (cp == '\n') {
             pen_x = x;
+            column = 0;
             current_y += (int)(current_size * LINE_HEIGHT);
             // 如果不是持久加粗，则换行重置
             if (!bold_is_persistent) {
@@ -173,21 +239,19 @@ void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width
         // 4. 处理 Tab
         if (cp == 9) {
             int effective_tab = (tab_width > 0 ? tab_width : 100);
-            int current_col = (pen_x - x) / effective_tab;
-            pen_x = x + (current_col + 1) * effective_tab;
+            // Keep centered cells tied to their column even if a label overflows.
+            if (center_tabs) {
+                pen_x = x + (++column) * effective_tab;
+            } else {
+                int current_col = (pen_x - x) / effective_tab;
+                pen_x = x + (current_col + 1) * effective_tab;
+            }
             apply_centering();
             continue;
         }
 
         // --- 以下是渲染逻辑，保持 std::min 混合不变 ---
-        Font* activeFont = nullptr;
-        for (auto* f : fonts) {
-            if (stbtt_FindGlyphIndex(&f->info, cp) != 0) {
-                activeFont = f;
-                break;
-            }
-        }
-        if (!activeFont) activeFont = fonts[0];
+        Font* activeFont = glyph_font(fonts, cp);
 
         float local_scale = stbtt_ScaleForPixelHeight(&activeFont->info, (float)current_size);
         int advance, lsb, x0, y0, x1, y1;
@@ -210,27 +274,26 @@ void draw_text(const std::vector<Font*>& fonts, unsigned char* bitmap, int width
             for (int row = 0; row < char_h; ++row) {
                 for (int col = 0; col < char_w; ++col) {
                     int tx = pen_x + x0 + col;
-                    int ty = current_y + pixel_ascent + y0 + row;
-
-                    if (cp >= 0xF100 && cp < 0xFF00) ty += 10;
+                    int ty = current_y + pixel_ascent + y0 + row + glyph_y_offset(cp);
 
                     if (tx >= 0 && tx < width && ty >= 0 && ty < height) {
                         int p = char_bmp[row * char_w + col];
                         if (p > 0) {
-                            int color = 255 - p;
-                            bitmap[ty * width + tx] = std::min((int)bitmap[ty * width + tx], color);
+                            auto blend = [&](int x, int y, int alpha) {
+                                auto& pixel = bitmap[y * width + x];
+                                pixel = (pixel * (255 - alpha) + ink * alpha) / 255;
+                            };
                             if (is_bold_line) {
-                                int bold_c = 255 - (int)(p * 0.6);
                                 for (int i = -1; i <= 1; i++) {
                                     for (int j = -1; j <= 1; j++) {
                                         if (i == 0 && j == 0) continue;
                                         int btx = tx + i, bty = ty + j;
-                                        if (btx < width && bty < height)
-                                            bitmap[bty * width + btx] =
-                                                std::min((int)bitmap[bty * width + btx], bold_c);
+                                        if (btx >= 0 && btx < width && bty >= 0 && bty < height)
+                                            blend(btx, bty, (int)(p * 0.6));
                                     }
                                 }
                             }
+                            blend(tx, ty, p);
                         }
                     }
                 }

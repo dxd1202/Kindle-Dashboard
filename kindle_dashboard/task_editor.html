@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>待办和截止 · Kindle Dashboard</title>
+<link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+<main>
+  <header>
+    <p>Kindle Dashboard <span id="filename"></span></p>
+    <h1>待办和截止</h1>
+    <nav aria-label="编辑器"><a href="/" aria-current="page">任务</a><a href="/calendar">日程</a></nav>
+  </header>
+
+  <form id="editor">
+    <h2 id="form-heading">新增任务</h2>
+    <div class="fields">
+      <label>任务名称<input id="title" required placeholder="例如：提交实验报告"></label>
+      <label>截止时间（可选，北京时间）<input type="datetime-local" id="due" step="1"></label>
+      <div class="actions">
+        <button class="primary" id="submit" disabled>添加</button>
+        <button type="button" id="cancel" hidden>取消</button>
+      </div>
+    </div>
+    <div class="form-footer">
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <button type="button" id="reload" hidden>重新读取清单</button>
+    </div>
+  </form>
+
+  <section aria-label="任务清单">
+    <div class="toolbar">
+      <div class="filters" aria-label="筛选任务">
+        <button type="button" data-filter="open" aria-pressed="true">进行中</button>
+        <button type="button" data-filter="due" aria-pressed="false">有截止</button>
+        <button type="button" data-filter="done" aria-pressed="false">已完成</button>
+        <button type="button" data-filter="all" aria-pressed="false">全部</button>
+      </div>
+      <input class="search" type="search" id="search" aria-label="搜索任务" placeholder="搜索任务">
+    </div>
+    <p class="summary" id="summary"></p>
+    <div id="deadlines" class="task-group" hidden><h2>截止</h2><ul aria-label="截止任务"></ul></div>
+    <div id="pending" class="task-group" hidden><h2>待办</h2><ul aria-label="待办任务"></ul></div>
+    <div id="completed" class="task-group" hidden><h2>已完成</h2><ul aria-label="已完成任务"></ul></div>
+    <p class="empty" id="empty" hidden></p>
+  </section>
+</main>
+<script>
+"use strict";
+const editor = document.getElementById("editor");
+const titleInput = document.getElementById("title");
+const dueInput = document.getElementById("due");
+const submit = document.getElementById("submit");
+const cancel = document.getElementById("cancel");
+const reload = document.getElementById("reload");
+const status = document.getElementById("status");
+const search = document.getElementById("search");
+const filters = document.querySelectorAll("[data-filter]");
+const deadlines = document.getElementById("deadlines");
+const pending = document.getElementById("pending");
+const completed = document.getElementById("completed");
+let data;
+let editing;
+let busy = false;
+let filter = "open";
+
+function message(text, error = false) {
+  status.textContent = text;
+  status.classList.toggle("error", error);
+}
+
+function button(text, handler, className = "") {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.textContent = text;
+  element.className = className;
+  element.addEventListener("click", handler);
+  return element;
+}
+
+function showForm(task) {
+  editing = task;
+  titleInput.value = task?.title ?? "";
+  dueInput.value = task?.due ?? "";
+  document.getElementById("form-heading").textContent = task ? "编辑任务" : "新增任务";
+  submit.textContent = task ? "保存" : "添加";
+  cancel.hidden = !task;
+}
+
+function setFilter(value) {
+  filter = value;
+  filters.forEach(control => control.setAttribute("aria-pressed", String(control.dataset.filter === value)));
+  if (data) draw();
+}
+
+function draw() {
+  const groups = [deadlines, pending, completed];
+  const lists = groups.map(group => group.querySelector("ul"));
+  lists.forEach(list => list.replaceChildren());
+  const query = search.value.trim().toLocaleLowerCase();
+  const matches = data.tasks.filter(task => {
+    if (!task.title.toLocaleLowerCase().includes(query)) return false;
+    if (filter === "done") return task.done;
+    if (filter === "due") return !task.done && task.due;
+    return filter === "all" || !task.done;
+  });
+  const now = Date.now();
+  const isOverdue = task => task.due && Date.parse(task.due + "+08:00") <= now;
+  const ordered = [...matches].sort((a, b) => (a.due || "~").localeCompare(b.due || "~"));
+  ordered.forEach(task => {
+    const row = document.createElement("li");
+    row.classList.toggle("done", task.done);
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = task.done;
+    const name = task.title || "未填写标题";
+    checkbox.setAttribute("aria-label", task.done ? "重新打开 " + name : "完成 " + name);
+    checkbox.addEventListener("change", () => save({action: "toggle", id: task.id, done: checkbox.checked}));
+    const details = document.createElement("div");
+    details.className = "details";
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = name;
+    details.append(title);
+    if (task.due) {
+      const date = document.createElement("small");
+      const overdue = !task.done && isOverdue(task);
+      date.textContent = (overdue ? "逾期 " : "截止 ") + task.due.replace("T", " ").replace(/( \d{2}:\d{2}):00$/, "$1");
+      date.classList.toggle("overdue", Boolean(overdue));
+      details.append(date);
+    }
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    actions.append(button("编辑", () => {
+      showForm(task);
+      message("");
+      editor.scrollIntoView({block: "nearest"});
+      titleInput.focus();
+    }), button("删除", () => {
+      if (window.confirm("删除「" + name + "」？")) save({action: "delete", id: task.id});
+    }, "delete"));
+    row.append(checkbox, details, actions);
+    lists[task.done ? 2 : task.due ? 0 : 1].append(row);
+  });
+  groups.forEach((group, index) => { group.hidden = lists[index].childElementCount === 0; });
+  const empty = document.getElementById("empty");
+  empty.hidden = matches.length > 0;
+  empty.textContent = query ? "没有匹配的任务" : filter === "done" ? "还没有已完成任务" : filter === "due" ? "暂无带截止时间的任务" : "暂无任务";
+  const active = data.tasks.filter(task => !task.done);
+  const overdue = active.filter(isOverdue).length;
+  document.getElementById("summary").textContent =
+    `${active.length} 项进行中 · ${data.tasks.length - active.length} 项已完成` + (overdue ? ` · ${overdue} 项逾期` : "");
+  document.getElementById("filename").textContent = "· " + data.filename;
+}
+
+function setBusy(value) {
+  busy = value;
+  titleInput.disabled = value;
+  dueInput.disabled = value;
+  submit.disabled = value || !data;
+  cancel.disabled = value;
+  reload.disabled = value;
+  document.querySelectorAll("section button, section input").forEach(control => { control.disabled = value; });
+}
+
+async function load() {
+  setBusy(true);
+  try {
+    const response = await fetch("/api/tasks");
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    data = result;
+    draw();
+    showForm();
+    reload.hidden = true;
+    message("");
+  } catch (error) {
+    message(error.message || "无法读取任务清单。", true);
+    reload.hidden = false;
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function save(change) {
+  if (busy || !data) return;
+  setBusy(true);
+  try {
+    const response = await fetch("/api/tasks", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({...change, revision: data.revision}),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      if (response.status === 409) reload.hidden = false;
+      throw new Error(result.error);
+    }
+    data = result;
+    if (change.action === "add") {
+      search.value = "";
+      setFilter("open");
+    } else {
+      draw();
+    }
+    if (change.action === "add" || change.action === "edit" || editing?.id === change.id) {
+      showForm();
+    } else if (editing && change.action === "delete" && change.id < editing.id) {
+      editing = {...editing, id: editing.id - 1};
+    }
+    reload.hidden = true;
+    const feedback = {add: "任务已添加", edit: "修改已保存", delete: "任务已删除",
+                      toggle: change.done ? "已标为完成" : "已恢复为进行中"};
+    message(feedback[change.action]);
+  } catch (error) {
+    draw();
+    message(error.message || "无法保存任务。", true);
+  } finally {
+    setBusy(false);
+    if (!editing && !status.classList.contains("error")) titleInput.focus();
+  }
+}
+
+editor.addEventListener("submit", event => {
+  event.preventDefault();
+  if (!titleInput.value.trim()) {
+    message("请输入任务名称。", true);
+    titleInput.focus();
+    return;
+  }
+  save({action: editing ? "edit" : "add", id: editing?.id, done: editing?.done ?? false,
+        title: titleInput.value, due: dueInput.value});
+});
+cancel.addEventListener("click", () => { showForm(); message(""); titleInput.focus(); });
+reload.addEventListener("click", load);
+filters.forEach(control => control.addEventListener("click", () => setFilter(control.dataset.filter)));
+search.addEventListener("input", () => { if (data) draw(); });
+editor.addEventListener("keydown", event => {
+  if (event.key === "Escape" && editing && !busy) cancel.click();
+});
+load();
+</script>
+</body>
+</html>

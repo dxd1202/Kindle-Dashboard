@@ -52,3 +52,12 @@ ENV/
 .DS_Store
 Thumbs.db
 desktop.ini
+# Private semester settings and tasks
+dashboard.local.json
+/tasks.local.md
+
+# Synthetic calendar used by the regression tests
+!tests/example-calendar.ics
+
+# Local task data
+/tasks.local.json

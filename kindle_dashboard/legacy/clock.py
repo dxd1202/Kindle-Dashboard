@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-import pytz
 
 def get_current_time_info():
     """获取格式化的当前日期、星期和时间"""

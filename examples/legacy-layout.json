@@ -9,7 +9,7 @@
         },
         {
             "id": "clock",
-            "content": "a",
+            "content": "",
             "x": 620,
             "y": 20,
             "size": 60
@@ -17,7 +17,7 @@
         {
             "id": "weather_icon",
             "font": "qweather-icons.ttf",
-            "content": "a",
+            "content": "",
             "x": 30,
             "y": 35,
             "size": 120
@@ -25,7 +25,7 @@
         {
             "id": "weather_now",
             "font": "main-font.ttf",
-            "content": "a",
+            "content": "天气未配置",
             "x": 180,
             "y": 22,
             "size": 56
@@ -33,7 +33,7 @@
         {
             "id": "weather_hourly",
             "font": "qweather-icons.ttf",
-            "content": "a",
+            "content": "",
             "x": 20,
             "y": 190,
             "size": 48,
@@ -43,7 +43,7 @@
         {
             "id": "stock",
             "font": "main-font.ttf",
-            "content": "a",
+            "content": "行情未配置",
             "x": 15,
             "y": 800,
             "size": 36,
@@ -53,7 +53,7 @@
         {
             "id": "timetable",
             "font": "main-font.ttf",
-            "content": "a",
+            "content": "课表未配置",
             "x": 600,
             "y": 80,
             "size": 48

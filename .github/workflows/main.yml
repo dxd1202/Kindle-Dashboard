@@ -1,85 +1,39 @@
 name: Kindle Dashboard Auto Update
 on:
-  # schedule:
-  #   - cron: '2,32 0-17,22,23 * * *' # 每小时整点运行
-  workflow_dispatch:      # 允许手动点击运行
+  workflow_dispatch:
+
+concurrency:
+  group: kindle-dashboard-pages
 
 jobs:
   build_and_run:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Setup Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake g++
-          python -m pip install requests yfinance icalendar pytz python-dotenv python-dateutil
+        run: python -m pip install -r requirements.txt
 
-      - name: Prepare Config and ICS
-        run: |
-          # 打印当前目录所有文件，确认文件名和大小写
-          echo "--- 当前目录文件列表 ---"
-          ls -F
-          echo "------------------------"
-          
-          # 强制检查关键文件是否存在
-          if [ ! -f "main-font.ttf" ]; then
-            echo "错误：找不到 main-font.ttf"
-            exit 1
-          fi
-
-          # 1. 从模板创建一个临时的 config.json，防止 C++ 构建失败
-          cp config_template.json config.json
-          # 2. 从 Secret 还原课表
-          echo "${{ secrets.ICS_DATA }}" > dxdcourses2025Spring.ics
-
-      - name: Build C++ Renderer
-        run: |
-          mkdir build && cd build
-          cmake ..
-          make
-
-      - name: Run Dashboard Engine
-        # 这一步是核心：将 Secrets 注入环境变量供 Python 使用
+      - name: Generate public dashboard
+        id: public
         env:
           WEATHER_KEY: ${{ secrets.WEATHER_KEY }}
           WEATHER_HOST: ${{ secrets.WEATHER_HOST }}
-          STOCK_LIST: ${{ secrets.STOCK_LIST }}
-          ICS_DATA: ${{ secrets.ICS_DATA }} # 映射这一行
+          SEMESTER_START: ${{ vars.SEMESTER_START }}
+          SEMESTER_WEEKS: ${{ vars.SEMESTER_WEEKS }}
           PYTHONIOENCODING: utf-8
         run: |
-          # 1. 运行 python 抓取数据生成 config.json
-          python main.py
-          # 此时 build/Kindle-Dashboard 应该已经生成了 output.png
-
-      - name: Prepare Public Dir
-        # 这一步非常关键：
-        # 1. 创建 public 文件夹
-        # 2. 把生成的图片从 build 拷贝出来
-        # 3. 创建一个 .nojekyll 文件，防止 GitHub Pages 过滤特殊字符
-        run: |
-          mkdir -p public
-
-          if [ -f "output.png" ]; then
-            cp output.png public/
-          elif [ -f "build/output.png" ]; then
-            cp build/output.png public/
-          else
-            echo "错误：在任何地方都找不到 output.png！"
-            ls -R # 打印所有文件列表，方便我们最后“捉鬼”
-            exit 1
-          fi
-          
-          touch public/.nojekyll
-          echo "--- 检查图片是否存在 ---"
-          ls -lh public/
+          publish_dir="$(mktemp -d "$RUNNER_TEMP/kindle-pages.XXXXXX")"
+          python main.py --hide-timetable --output "$publish_dir/output.png"
+          touch "$publish_dir/.nojekyll"
+          printf 'directory=%s\n' "$publish_dir" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to GitHub Pages
-        # 使用此插件将图片推送到 gh-pages 分支
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build # 图片在 build 目录下
+          publish_dir: ${{ steps.public.outputs.directory }}
           publish_branch: gh-pages

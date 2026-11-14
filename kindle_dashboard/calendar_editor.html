@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日程 · Kindle Dashboard</title>
+<link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+<main>
+  <header>
+    <p>Kindle Dashboard <span id="filename"></span></p>
+    <h1>日程</h1>
+    <nav aria-label="编辑器"><a href="/">任务</a><a href="/calendar" aria-current="page">日程</a></nav>
+  </header>
+
+  <form id="editor">
+    <h2>新增日程</h2>
+    <div class="fields calendar-fields">
+      <label class="wide">日程名称<input name="title" required placeholder="例如：排球训练"></label>
+      <label>地点（可选）<input name="place"></label>
+      <label>日期<input name="date" type="date" required></label>
+      <label>开始时间（北京时间）<input name="start" type="time" required></label>
+      <label>结束时间（可选）<input name="end" type="time"></label>
+    </div>
+    <div class="actions calendar-actions">
+      <button type="button" data-day="0" disabled>今天</button>
+      <button type="button" data-day="1" disabled>明天</button>
+      <button class="primary" id="submit" disabled>添加日程</button>
+    </div>
+    <div class="form-footer">
+      <p class="status" id="status" role="status"></p>
+      <button type="button" id="reload" hidden>重新读取日程</button>
+    </div>
+  </form>
+
+  <section id="days" aria-label="今日和明日日程"></section>
+</main>
+<script>
+"use strict";
+const form = document.getElementById("editor");
+const submit = document.getElementById("submit");
+const reload = document.getElementById("reload");
+const status = document.getElementById("status");
+const shortcuts = document.querySelectorAll("[data-day]");
+let calendar;
+let busy = false;
+
+function setBusy(value) {
+  busy = value;
+  for (const input of form.querySelectorAll("input")) input.disabled = busy || !calendar?.writable;
+  submit.disabled = busy || !calendar?.writable;
+  reload.disabled = busy;
+  for (const shortcut of shortcuts) shortcut.disabled = submit.disabled;
+}
+
+function message(text, error = false) {
+  status.textContent = text;
+  status.classList.toggle("error", error);
+}
+
+function show(result) {
+  calendar = result;
+  document.getElementById("filename").textContent = "· " + result.filename;
+  const days = document.getElementById("days");
+  days.replaceChildren();
+  result.days.forEach((day, index) => {
+    const group = document.createElement("div");
+    group.className = "task-group";
+    const heading = document.createElement("h2");
+    heading.textContent = (index === 0 ? "今天" : "明天") + " · " + day.date;
+    group.append(heading);
+    const list = document.createElement("ul");
+    for (const event of day.events) {
+      const row = document.createElement("li");
+      const time = document.createElement("time");
+      time.className = "event-time";
+      time.textContent = event.time;
+      const details = document.createElement("div");
+      details.className = "details";
+      details.textContent = event.name;
+      if (event.place) {
+        const place = document.createElement("small");
+        place.textContent = event.place;
+        details.append(place);
+      }
+      row.append(time, details);
+      list.append(row);
+    }
+    if (day.events.length) group.append(list);
+    else {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "暂无日程";
+      group.append(empty);
+    }
+    days.append(group);
+  });
+  if (!form.elements.date.value) form.elements.date.value = result.days[0].date;
+}
+
+async function load() {
+  setBusy(true);
+  try {
+    const response = await fetch("/api/calendar");
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    show(result);
+    reload.hidden = true;
+    message(result.writable ? "" : "当前由 ICS_DATA 提供日程。改用 ICS 文件后即可添加。");
+  } catch (error) {
+    message(error.message, true);
+    reload.hidden = false;
+  } finally {
+    setBusy(false);
+  }
+}
+
+for (const shortcut of shortcuts) {
+  shortcut.addEventListener("click", () => {
+    form.elements.date.value = calendar.days[Number(shortcut.dataset.day)].date;
+  });
+}
+reload.addEventListener("click", load);
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (busy || !calendar?.writable) return;
+  const fields = new FormData(form);
+  const day = fields.get("date");
+  const end = fields.get("end");
+  setBusy(true);
+  try {
+    const response = await fetch("/api/calendar", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        revision: calendar.revision, action: "add", title: fields.get("title"),
+        place: fields.get("place"), start: day + "T" + fields.get("start"),
+        end: end ? day + "T" + end : "",
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      if (response.status === 409) reload.hidden = false;
+      throw new Error(result.error);
+    }
+    form.reset();
+    form.elements.date.value = day;
+    show(result);
+    reload.hidden = true;
+    message("已写入 ICS。重新生成看板即可更新图片。");
+  } catch (error) {
+    message(error.message, true);
+  } finally {
+    setBusy(false);
+  }
+});
+load();
+</script>
+</body>
+</html>
