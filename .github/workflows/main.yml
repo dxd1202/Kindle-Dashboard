@@ -17,6 +17,30 @@ jobs:
       - name: Setup Dependencies
         run: python -m pip install -r requirements.txt
 
+      - name: Install dashboard fonts
+        run: |
+          font_dir="$HOME/.local/share/fonts/kindle-dashboard"
+          mkdir -p "$font_dir"
+          downloads="$(mktemp -d)"
+          trap 'rm -rf "$downloads"' EXIT
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip \
+            --output "$downloads/inter.zip"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/be5invis/Sarasa-Gothic/releases/download/v1.0.43/SarasaGothicSC-TTF-1.0.43.7z \
+            --output "$downloads/sarasa.7z"
+          unzip -jo "$downloads/inter.zip" '*/Inter-Regular.ttf' '*/Inter-SemiBold.ttf' -d "$font_dir"
+          7z e -y "$downloads/sarasa.7z" "-o$font_dir" -r SarasaGothicSC-Regular.ttf SarasaGothicSC-Bold.ttf
+          fc-cache -f "$font_dir"
+          python - <<'PY'
+          from kindle_dashboard.render import add_system_fonts
+
+          config = {}
+          add_system_fonts(config)
+          if set(config.get("dashboard_fonts", {})) != {"Regular", "Bold"}:
+              raise SystemExit("Inter and Sarasa Gothic SC font stacks were not found")
+          PY
+
       - name: Generate public dashboard
         id: public
         env:
@@ -26,6 +50,22 @@ jobs:
           SEMESTER_WEEKS: ${{ vars.SEMESTER_WEEKS }}
           PYTHONIOENCODING: utf-8
         run: |
+          python - <<'PY'
+          from datetime import date
+          from os import environ
+
+          for name in ("SEMESTER_START", "SEMESTER_WEEKS"):
+              if not environ.get(name, "").strip():
+                  raise SystemExit(f"Missing {name}: add it under Actions > Variables > Repository variables")
+          try:
+              start = date.fromisoformat(environ["SEMESTER_START"])
+              weeks = int(environ["SEMESTER_WEEKS"])
+              if start.isoformat() != environ["SEMESTER_START"] or weeks < 1:
+                  raise ValueError
+          except ValueError:
+              raise SystemExit("Use YYYY-MM-DD for SEMESTER_START and a positive integer for SEMESTER_WEEKS")
+          print(f"Semester configuration: {start}, {weeks} weeks")
+          PY
           publish_dir="$(mktemp -d "$RUNNER_TEMP/kindle-pages.XXXXXX")"
           python main.py --hide-timetable --output "$publish_dir/output.png"
           touch "$publish_dir/.nojekyll"
