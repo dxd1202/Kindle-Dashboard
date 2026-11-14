@@ -41,18 +41,24 @@ jobs:
               raise SystemExit("Inter and Sarasa Gothic SC font stacks were not found")
           PY
 
-      - name: Generate public dashboard
+      - name: Generate full dashboard
         id: public
         env:
           WEATHER_KEY: ${{ secrets.WEATHER_KEY }}
           WEATHER_HOST: ${{ secrets.WEATHER_HOST }}
           SEMESTER_START: ${{ vars.SEMESTER_START }}
           SEMESTER_WEEKS: ${{ vars.SEMESTER_WEEKS }}
+          ICS_FILE: 2026Autumn.ics
           PYTHONIOENCODING: utf-8
         run: |
           python - <<'PY'
           from datetime import date
           from os import environ
+          from pathlib import Path
+
+          from icalendar import Calendar
+
+          from kindle_dashboard.tasks import decode_tasks
 
           for name in ("SEMESTER_START", "SEMESTER_WEEKS"):
               if not environ.get(name, "").strip():
@@ -65,9 +71,23 @@ jobs:
           except ValueError:
               raise SystemExit("Use YYYY-MM-DD for SEMESTER_START and a positive integer for SEMESTER_WEEKS")
           print(f"Semester configuration: {start}, {weeks} weeks")
+
+          calendar_path = Path(environ["ICS_FILE"])
+          tasks_path = Path("tasks.local.json")
+          for path in (calendar_path, tasks_path):
+              if not path.is_file():
+                  raise SystemExit(f"Missing {path}: commit and push the source file to main")
+          try:
+              Calendar.from_ical(calendar_path.read_bytes())
+          except (OSError, ValueError):
+              raise SystemExit(f"{calendar_path} must contain a valid ICS calendar")
+          try:
+              decode_tasks(tasks_path.read_bytes())
+          except (OSError, ValueError):
+              raise SystemExit(f"{tasks_path} must contain a valid JSON array")
           PY
           publish_dir="$(mktemp -d "$RUNNER_TEMP/kindle-pages.XXXXXX")"
-          python main.py --hide-timetable --output "$publish_dir/output.png"
+          python main.py --output "$publish_dir/output.png"
           touch "$publish_dir/.nojekyll"
           printf 'directory=%s\n' "$publish_dir" >> "$GITHUB_OUTPUT"
 

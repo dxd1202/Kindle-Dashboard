@@ -31,8 +31,9 @@ compile_commands.json
 .env
 # 包含你个人信息的动态配置文件
 config.json
-# 包含你个人课表的隐私文件
+# 忽略其他日历，只跟踪用于发布的课表和测试样例
 *.ics
+!/2026Autumn.ics
 
 # --- 4. 运行结果 (Outputs) ---
 # 既然是自动生成的看板图，不需要传到代码仓库里
@@ -52,12 +53,9 @@ ENV/
 .DS_Store
 Thumbs.db
 desktop.ini
-# Private semester settings and tasks
+# Local settings and old Markdown tasks
 dashboard.local.json
 /tasks.local.md
 
 # Synthetic calendar used by the regression tests
 !tests/example-calendar.ics
-
-# Local task data
-/tasks.local.json

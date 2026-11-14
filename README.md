@@ -86,7 +86,7 @@ python3 main.py
 
 运行 `python3 main.py --edit-tasks` 打开本地任务编辑页。可以新增、搜索、筛选、修改、完成或删除任务。操作立即保存，截止时间按北京时间输入。若浏览器没有自动打开，复制终端显示的网址即可。按 `Ctrl+C` 关闭编辑器。运行 `python3 main.py` 生成更新后的看板图片。
 
-`tasks_file` 指向一个 JSON 数组文件，省略时默认使用由 Git 忽略的 `tasks.local.json`。与 `calendar` 一样，相对路径以仓库根目录为准。使用自定义私有路径时，请将对应路径加入 Git 忽略规则。
+`tasks_file` 指向一个 JSON 数组文件，省略时默认使用 `tasks.local.json`。与 `calendar` 一样，相对路径以仓库根目录为准。默认清单参与公开发布。使用其他仅供本地读取的清单时，请将对应路径加入 Git 忽略规则。
 
 ```json
 [
@@ -99,10 +99,18 @@ python3 main.py
 
 ## 发布
 
-GitHub Actions 可手动启动或由已有的外部定时器触发。通过 Secrets 传入
-`WEATHER_HOST` 和 `WEATHER_KEY`。如果希望公开版显示学期进度，可以在
-Actions Variables 中设置 `SEMESTER_START` 和 `SEMESTER_WEEKS`。
+GitHub Actions 可手动启动或由 cron-job.org 触发。Actions Secrets 提供
+`WEATHER_HOST` 和 `WEATHER_KEY`。Actions Variables 提供
+`SEMESTER_START` 和 `SEMESTER_WEEKS`。
 
-工作流以 `--hide-timetable` 出图，公开首页不渲染日程、截止和待办，
-也不读取日历和任务清单。发布目录只包含 `output.png` 和 `.nojekyll`。
-历史 Git 提交可能仍包含此前提交的课表、渲染配置和图片。
+工作流直接读取 `main` 上的 `2026Autumn.ics` 和 `tasks.local.json`，生成包含日程、待办和截止的完整版图片。两个源文件及其提交历史在仓库中公开。Pages 发布目录包含 `output.png` 和 `.nojekyll`。
+
+网页编辑器保存后，将改动的源文件提交并推送到 `main`。例如同时更新两份文件：
+
+```sh
+git add 2026Autumn.ics tasks.local.json
+git commit -m "Update dashboard schedule and tasks"
+git push origin main
+```
+
+下一次手动运行或定时触发会用推送后的数据出图。要立即更新，在 Actions 页运行 **Kindle Dashboard Auto Update**，分支选 `main`。换学期改用新 ICS 文件时，同时更新本地 `dashboard.local.json` 的 `calendar`、工作流里的 `ICS_FILE` 以及 `.gitignore` 中放行的日历路径。
