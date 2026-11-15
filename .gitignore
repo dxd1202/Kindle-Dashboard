@@ -1,0 +1,61 @@
+# =================================================================
+# Kindle-Dashboard 终极 .gitignore 模板
+# =================================================================
+
+# --- 1. 编译产物 (Build Artifacts) ---
+build/
+bin/
+obj/
+*.exe
+*.o
+*.obj
+*.dll
+*.so
+*.dylib
+*.out
+*.app
+*.ilk
+*.pdb
+*.exp
+*.lib
+*.a
+
+# --- 2. 语言服务器与编辑器缓存 (LSP & IDE) ---
+.cache/
+.vscode/
+# compile_commands.json 记录了本地绝对路径，换台电脑就没用了，必须忽略
+compile_commands.json
+
+# --- 3. 个人隐私与本地配置 (Private Data) ---
+# 包含 API Key 的环境文件
+.env
+# 包含你个人信息的动态配置文件
+config.json
+# 忽略其他日历，只跟踪用于发布的课表和测试样例
+*.ics
+!/2026Autumn.ics
+
+# --- 4. 运行结果 (Outputs) ---
+# 既然是自动生成的看板图，不需要传到代码仓库里
+output.png
+
+# --- 5. Python 相关 (Python Runtime) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# --- 6. 操作系统产生的垃圾文件 (OS Junk) ---
+.DS_Store
+Thumbs.db
+desktop.ini
+# Local settings and old Markdown tasks
+dashboard.local.json
+/tasks.local.md
+
+# Synthetic calendar used by the regression tests
+!tests/example-calendar.ics

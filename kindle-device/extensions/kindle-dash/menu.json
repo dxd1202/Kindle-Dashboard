@@ -1,0 +1,6 @@
+{
+  "items": [
+    {"name": "Kindle Dashboard", "action": "/bin/sh /mnt/us/dashboard/start.sh"},
+    {"name": "Stop Kindle Dashboard", "action": "/bin/sh /mnt/us/dashboard/stop.sh"}
+  ]
+}

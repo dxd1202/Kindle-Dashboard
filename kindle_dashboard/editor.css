@@ -1,0 +1,69 @@
+  :root { color-scheme: light; font: 16px/1.55 Inter, "Sarasa Gothic SC", system-ui, sans-serif; color: #1e302a; background: #f5f6f1; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  main { width: min(780px, 100% - 32px); margin: 48px auto 56px; }
+  header { margin-bottom: 24px; }
+  header p { margin: 0; color: #52655b; font-size: .875rem; overflow-wrap: anywhere; }
+  nav { display: flex; gap: 8px; margin-top: 12px; }
+  nav a { color: #255b47; padding: 6px 12px; border-radius: 7px; text-decoration: none; }
+  nav a[aria-current="page"] { background: #e1ebe0; font-weight: 600; }
+  h1 { margin: 5px 0 0; font-size: clamp(1.8rem, 5vw, 2.5rem); letter-spacing: -.035em; }
+  h2 { margin: 0 0 10px; font-size: 1.05rem; }
+  form, ul { border: 1px solid #d6ded5; border-radius: 14px; background: #fff; }
+  form { padding: 18px; }
+  .fields { display: grid; grid-template-columns: minmax(125px, 1fr) minmax(245px, auto) auto; gap: 12px; align-items: end; }
+  label { display: grid; gap: 6px; font-size: .875rem; font-weight: 600; }
+  label, input { min-width: 0; }
+  input, button { font: inherit; color: inherit; }
+  input:not([type=checkbox]) { border: 1px solid #abb9af; border-radius: 7px; padding: 8px 10px; width: 100%; min-height: 42px; }
+  input[type=checkbox] { width: 20px; height: 20px; margin: 0; accent-color: #255b47; cursor: pointer; }
+  button { border: 1px solid transparent; border-radius: 7px; padding: 8px 12px; min-height: 42px; background: transparent; cursor: pointer; white-space: nowrap; }
+  button:hover { background: #ecf1eb; }
+  button:disabled { opacity: .55; cursor: default; }
+  button.primary { color: #fff; background: #255b47; }
+  button.primary:hover { background: #1b4938; }
+  :focus-visible { outline: 2px solid #418569; outline-offset: 3px; }
+  section { margin-top: 24px; }
+  ul { padding: 0; margin: 0; list-style: none; }
+  li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+  li + li { border-top: 1px solid #e1e7de; }
+  li input { flex: 0 0 20px; }
+  .details { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .details small { display: block; color: #52655b; }
+  .done .title { text-decoration: line-through; color: #52655b; }
+  .actions { display: flex; }
+  .delete { color: #962e27; }
+  .empty { color: #52655b; margin: 0; }
+  .status { color: #255b47; min-height: 1.6rem; margin: 8px 0 0; font-size: .9rem; }
+  [hidden] { display: none !important; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filters { display: flex; flex-wrap: wrap; gap: 4px; }
+  .filters button { border-color: #d6ded5; padding-inline: 12px; }
+  .filters button[aria-pressed="true"] { background: #e1ebe0; color: #194735; border-color: #a7bbaa; }
+  .search { width: min(100%, 235px); }
+  .summary { color: #52655b; font-size: .9rem; margin: 0 0 14px; }
+  .task-group + .task-group { margin-top: 16px; }
+  .details .overdue { color: #962e27; }
+  .empty { border: 1px dashed #b5c5b8; border-radius: 12px; padding: 18px; }
+  .form-footer { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .form-footer button { color: #255b47; }
+  .status.error { color: #962e27; }
+  @media (max-width: 640px) {
+    main { margin: 24px auto; }
+    .fields { grid-template-columns: minmax(0, 1fr) auto; }
+    .fields label { grid-column: 1 / -1; }
+    li { padding-inline: 10px; gap: 8px; }
+    .actions button { padding-inline: 7px; }
+    .search { width: 100%; }
+    .filters { width: 100%; }
+    .filters button { flex: 1; padding-inline: 8px; }
+  }
+
+.calendar-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.calendar-fields .wide { grid-column: span 2; }
+.event-time { flex: 0 0 3.2rem; font-variant-numeric: tabular-nums; }
+.calendar-actions { margin-top: 12px; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .calendar-fields { grid-template-columns: minmax(0, 1fr); }
+  .calendar-fields .wide { grid-column: 1 / -1; }
+}
