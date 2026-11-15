@@ -1,6 +1,14 @@
 # Kindle 安装
 
-设备端脚本面向已越狱、已安装 KUAL 且已连接 Wi-Fi 的 Kindle。项目曾在 Kindle Paperwhite 3 上运行。当前脚本的完整安装和退出流程仍待在对应固件上复测。
+## 设备准备
+
+1. 在 Kindle 上打开 **设置 → 设备选项 → 设备信息**，记下设备型号和完整固件版本。型号也可以参考 [Amazon 的 Kindle 型号识别指南](https://digprjsurvey.amazon.com/csad/help/node/GK33S847NN4V6Y83)。
+2. 根据型号和固件版本确认越狱兼容性，再完成设备越狱。同一机型的不同固件可能需要不同的准备流程。仓库中的脚本从已越狱的设备开始安装。
+3. 越狱后安装适用于该设备的 [KUAL（Kindle Unified Application Launcher）](https://wiki.mobileread.com/wiki/KUAL)，打开一次确认菜单能正常显示，并让 Kindle 连上 Wi-Fi。
+
+项目曾在 Kindle Paperwhite 3 上运行。当前脚本的完整安装和退出流程仍待在对应固件上复测。
+
+## 安装看板
 
 1. 在电脑浏览器中打开自己的 `output.png`。如果还没有图片地址，先完成 [GitHub Pages 部署](pages.md)。
 2. 将仓库里的 `kindle-device/dashboard/` 复制到 Kindle 的 `/mnt/us/dashboard/`，将 `kindle-device/extensions/kindle-dash/` 复制到 `/mnt/us/extensions/kindle-dash/`。

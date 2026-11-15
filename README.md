@@ -92,6 +92,8 @@ python3 main.py
 
 ## 部署到 Kindle
 
+要让 Kindle 自动下载并显示看板，设备需要先越狱并安装 KUAL。请先按 [设备准备](docs/kindle.md#设备准备) 确认 Kindle 的型号和固件版本。只在电脑上生成 PNG 可以直接使用上面的快速开始。
+
 先按 [GitHub Pages 部署](docs/pages.md) 发布一张可以访问的图片，再按 [Kindle 安装](docs/kindle.md) 配置设备。部署说明也包含使用自己的日程和定时出图的步骤。
 
 项目代码采用 [MIT 许可证](LICENSE)。字体、图标、用到的头文件和天气数据来源见 [第三方资源](THIRD_PARTY_NOTICES.md)。
