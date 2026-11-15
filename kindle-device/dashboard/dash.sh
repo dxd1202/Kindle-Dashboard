@@ -10,10 +10,14 @@ previous_screensaver=
 restore_framework=no
 exit_watchers=
 wait_pid=
+restore_wifi=no
 
 cleanup() {
     if [ -n "$wait_pid" ]; then kill "$wait_pid" 2>/dev/null; fi
     for watcher in $exit_watchers; do kill "$watcher" 2>/dev/null; done
+    if [ "$restore_wifi" = yes ]; then
+        lipc-set-prop com.lab126.cmd wirelessEnable 1 || log "Could not restore Wi-Fi."
+    fi
     if [ "$restore_framework" = yes ]; then
         case "$(initctl status lab126_gui 2>/dev/null)" in
             'lab126_gui start/running'*) ;;
@@ -91,67 +95,112 @@ wifi_state() {
     wpa_cli -i wlan0 status 2>/dev/null | sed -n 's/^wpa_state=//p'
 }
 
+wait_for_wifi() {
+    unknown_checks=0
+    for attempt in 1 2 3 4 5 6 7 8 9 10; do
+        sleep 3
+        case "$(wifi_state)" in
+            COMPLETED)
+                log "Wi-Fi associated; checking the image URL."
+                return 0
+                ;;
+            '')
+                unknown_checks=$((unknown_checks + 1))
+                if [ "$unknown_checks" -ge 3 ]; then
+                    log "Wi-Fi status unavailable; testing the image URL directly."
+                    return 0
+                fi
+                ;;
+            *) unknown_checks=0 ;;
+        esac
+    done
+    log "Wi-Fi did not report association after 10 checks."
+    return 1
+}
+
 reconnect_wifi() {
-    radio=$(lipc-get-prop com.lab126.cmd wirelessEnable 2>/dev/null)
-    if [ "$radio" = 0 ]; then
-        log "Wi-Fi is switched off; enable it in Kindle settings."
-        return 1
-    fi
-    log "Wi-Fi disconnected; requesting reassociation with saved networks."
+    log "Requesting Wi-Fi reassociation with saved networks."
     if [ "$(wpa_cli -i wlan0 reassociate 2>/dev/null)" != OK ]; then
         log "Kindle did not accept the Wi-Fi reassociation request."
         return 1
     fi
-    for attempt in 1 2 3 4 5 6 7 8 9 10; do
-        sleep 3
-        if [ "$(wifi_state)" = COMPLETED ]; then
-            log "Wi-Fi reconnected."
-            return 0
-        fi
-    done
-    log "Wi-Fi did not reconnect within 30 seconds."
-    return 1
+    wait_for_wifi
 }
 
+reset_wifi() {
+    if [ "$(lipc-get-prop com.lab126.cmd wirelessEnable 2>/dev/null)" != 1 ]; then
+        return 1
+    fi
+    log "Download still unavailable; restarting Wi-Fi."
+    restore_wifi=yes
+    if ! lipc-set-prop com.lab126.cmd wirelessEnable 0; then
+        log "Could not turn Wi-Fi off for recovery."
+        return 1
+    fi
+    sleep 3
+    if ! lipc-set-prop com.lab126.cmd wirelessEnable 1; then
+        log "Could not turn Wi-Fi back on."
+        return 1
+    fi
+    restore_wifi=no
+    wait_for_wifi
+}
+
+network_failures=0
+next_wifi_reset=0
 while :; do
-    retry_wifi=no
-    if /bin/sh "$dir/local/fetch-dashboard.sh" "$image"; then
+    /bin/sh "$dir/local/fetch-dashboard.sh" "$image"
+    fetch_status=$?
+    if [ "$fetch_status" -ne 0 ]; then
+        state=$(wifi_state)
+        radio=$(lipc-get-prop com.lab126.cmd wirelessEnable 2>/dev/null)
+        log "Download failed (exit $fetch_status, Wi-Fi state: ${state:-unknown}, radio: ${radio:-unknown})."
+        if [ "$restore_wifi" = yes ] && lipc-set-prop com.lab126.cmd wirelessEnable 1; then
+            restore_wifi=no
+            radio=1
+        fi
+        if [ "$radio" = 0 ]; then
+            log "Wi-Fi is switched off; enable it in Kindle settings."
+        elif [ "$fetch_status" -eq 1 ]; then
+            network_failures=$((network_failures + 1))
+            if [ "$network_failures" -eq 1 ] && [ "$state" = COMPLETED ]; then
+                next_wifi_reset=2
+            fi
+            if reconnect_wifi; then
+                /bin/sh "$dir/local/fetch-dashboard.sh" "$image"
+                fetch_status=$?
+            fi
+            # Keep retrying downloads between radio resets.
+            if [ "$fetch_status" -eq 1 ] && [ "$network_failures" -ge "$next_wifi_reset" ]; then
+                next_wifi_reset=$((network_failures + 3))
+                if reset_wifi; then
+                    /bin/sh "$dir/local/fetch-dashboard.sh" "$image"
+                    fetch_status=$?
+                fi
+            fi
+        fi
+    fi
+
+    if [ "$fetch_status" -ne 1 ] || [ "${radio:-}" = 0 ]; then
+        network_failures=0
+        next_wifi_reset=0
+    fi
+    if [ "$fetch_status" -eq 0 ]; then
         log "Dashboard image downloaded"
         /usr/sbin/eips -f -g "$image" || log "Could not draw dashboard image"
     else
-        state=$(wifi_state)
-        case "$state" in
-            COMPLETED|'')
-                log "Download failed (Wi-Fi state: ${state:-unknown}); checking again at the next scheduled refresh."
-                warning="Download failed - keeping last image"
-                ;;
-            *)
-                retry_wifi=yes
-                if reconnect_wifi; then
-                    retry_wifi=no
-                    if /bin/sh "$dir/local/fetch-dashboard.sh" "$image"; then
-                        log "Dashboard image downloaded after reconnecting"
-                        /usr/sbin/eips -f -g "$image" || log "Could not draw dashboard image"
-                        warning=
-                    else
-                        log "Download failed after reconnecting."
-                        warning="Download failed - keeping last image"
-                    fi
-                else
-                    warning="Wi-Fi offline - retrying"
-                fi
-                ;;
-        esac
-        if [ -n "$warning" ]; then
-            if [ -s "$image" ]; then /usr/sbin/eips -f -g "$image"; fi
-            /usr/sbin/eips 1 1 "$warning"
-        fi
+        if [ -s "$image" ]; then /usr/sbin/eips -f -g "$image"; fi
+        /usr/sbin/eips 1 1 "Download failed - retrying"
     fi
 
     delay=$("$dir/next-wakeup" --schedule="$schedule" --timezone="$timezone" 2>/dev/null)
     case "$delay" in ''|*[!0-9]*) delay=1800 ;; esac
     if ! [ "$delay" -ge 30 ] 2>/dev/null; then delay=30; fi
-    if [ "$retry_wifi" = yes ] && [ "$delay" -gt 60 ]; then delay=60; fi
+    if [ "$fetch_status" -eq 1 ] && [ "${radio:-}" != 0 ] && [ "$delay" -gt 30 ]; then
+        delay=30
+    elif [ "$fetch_status" -ne 0 ] && [ "$delay" -gt 60 ]; then
+        delay=60
+    fi
     log "Next download in ${delay}s"
     sleep "$delay" &
     wait_pid=$!
