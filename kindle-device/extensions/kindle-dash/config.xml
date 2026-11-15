@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+    <information>
+        <name>Kindle Dashboard</name>
+        <version>1.0</version>
+        <author>dxd</author>
+        <id>kindle-dashboard-dxd</id>
+    </information>
+    <menus>
+        <menu type="json">menu.json</menu>
+    </menus>
+</extension>

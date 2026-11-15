@@ -239,6 +239,33 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(weather.alerts, [])
         self.assertIsNone(weather.current_aqi)
 
+    @patch.dict(os.environ, {"WEATHER_KEY": "test", "WEATHER_HOST": "example.invalid"})
+    @patch("kindle_dashboard.sources.weather.get_open_meteo_forecast", return_value={})
+    @patch("kindle_dashboard.sources.weather.request_qweather")
+    def test_active_alert_credits_are_rendered(self, request, _fallback):
+        request.side_effect = lambda _endpoint, *, service="weather", **_params: {
+            "weather": {"days": [], "validTime": (datetime.now(BEIJING) - timedelta(hours=2)).isoformat()},
+            "airquality": {"days": []},
+            "weatheralert": {
+                "metadata": {"attributions": ["https://developer.qweather.com/attribution.html"]},
+                "refer": {"sources": ["预警数据来源甲"]},
+                "alerts": [
+                    {"id": "one", "headline": "大风预警", "senderName": "示例气象台"},
+                    {"id": "cancelled", "senderName": "已取消来源", "messageType": {"code": "cancel"}},
+                ],
+            },
+        }[service]
+        weather = collect_weather()
+        self.assertEqual(weather.alerts, ["大风预警"])
+        self.assertEqual(weather.alert_credits, (
+            "https://developer.qweather.com/attribution.html", "预警数据来源甲", "示例气象台",
+        ))
+        labels = {item.get("content") for item in compose(
+            DEMO_NOW, None, weather, {}, "", [], [],
+        )["widgets"]}
+        self.assertIn("和风天气 https://www.qweather.com", labels)
+        self.assertIn(" · ".join(weather.alert_credits), labels)
+
     @patch.dict(os.environ, {"ICS_DATA": "", "ICS_FILE": ""})
     def test_two_day_schedule_converts_utc(self):
         fixture = Path(__file__).with_name("example-calendar.ics")

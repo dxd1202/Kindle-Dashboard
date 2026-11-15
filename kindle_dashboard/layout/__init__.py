@@ -18,5 +18,20 @@ def compose(now, semester, weather, schedule, schedule_status, deadlines, todos,
     if demo:
         widgets.text((LEFT + RIGHT) // 2, FOOTER_RULE_Y + 7, "示例数据", 33, gray=MUTED,
                      align="center")
+    else:
+        providers = []
+        if (weather.source == "和风天气" or weather.current or weather.air_quality
+                or weather.current_aqi or weather.alerts is not None):
+            providers.append("和风天气 https://www.qweather.com")
+        if weather.source == "Open-Meteo":
+            providers.append("Open-Meteo https://open-meteo.com (CC BY 4.0)")
+        if providers:
+            widgets.text(850, FOOTER_RULE_Y + (13 if weather.alert_credits else 23),
+                         " · ".join(providers), 24, gray=MUTED,
+                         align="center", center_y=True, max_width=690, fit_width=True)
+        if weather.alert_credits:
+            widgets.text(850, FOOTER_RULE_Y + 34, " · ".join(weather.alert_credits),
+                         21, gray=MUTED, align="center", center_y=True, max_width=690,
+                         fit_width=True)
     widgets.text(RIGHT, FOOTER_RULE_Y + 7, f"更新于 {now:%H:%M}", 33, gray=MUTED, align="right")
     return {"widgets": widgets.items}

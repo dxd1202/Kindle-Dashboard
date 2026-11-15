@@ -14,14 +14,16 @@ class Widgets:
         self.items = []
 
     def text(self, x, y, content, size=36, *, gray=BLACK, align="left", bold=False,
-             max_width=0, font="main-font.ttf", center_y=False, fit_width=False, emphasis=None):
+             max_width=0, font=None, center_y=False, fit_width=False, emphasis=None):
         content = re.sub(r"[\t\r\n]+", " ", str(content)).strip()
         if content:
             self.items.append({
                 "x": x, "y": y, "content": content,
                 "size": size, "gray": gray, "align": align, "max_width": max_width,
-                "font": font, "center_y": center_y, "bold": bold, "fit_width": fit_width,
+                "center_y": center_y, "bold": bold, "fit_width": fit_width,
             })
+            if font is not None:
+                self.items[-1]["font"] = font
             if emphasis is not None:
                 start, end = emphasis
                 self.items[-1]["emphasis"] = [

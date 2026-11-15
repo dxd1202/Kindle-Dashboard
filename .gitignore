@@ -59,3 +59,4 @@ dashboard.local.json
 
 # Synthetic calendar used by the regression tests
 !tests/example-calendar.ics
+!/examples/calendar.ics

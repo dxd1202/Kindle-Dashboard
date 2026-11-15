@@ -1,0 +1,5 @@
+{
+  "semester": {"start": "2026-09-14", "weeks": 18},
+  "calendar": "examples/calendar.ics",
+  "tasks_file": "examples/tasks.json"
+}

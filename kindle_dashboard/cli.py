@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .application import build_dashboard
 from .config import ROOT
-from .render import add_system_fonts, render
+from .render import render
 
 
 def load_local_environment():
@@ -34,5 +34,4 @@ def main():
     if not args.demo and not args.offline:
         load_local_environment()
     config = build_dashboard(demo=args.demo, offline=args.offline, hide_personal=args.hide_timetable)
-    add_system_fonts(config)
     render(config, output=args.output)

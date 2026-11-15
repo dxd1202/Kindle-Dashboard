@@ -2,12 +2,13 @@
 
 from datetime import datetime, timedelta
 import json
+import os
 
 from .config import BEIJING, ROOT, WEEKDAYS
 
 
 def task_file(settings):
-    path = ROOT / (settings.get("tasks_file") or "tasks.local.json")
+    path = ROOT / (os.getenv("TASKS_FILE") or settings.get("tasks_file") or "tasks.local.json")
     if path.suffix.lower() != ".json":
         raise ValueError("tasks_file 应指向 .json 任务清单")
     return path

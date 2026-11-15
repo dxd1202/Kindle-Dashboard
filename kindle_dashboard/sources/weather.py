@@ -128,11 +128,11 @@ def get_daily_aqi():
 
 
 def get_weather_alerts(now):
-    """Return active alert labels, or None when alert status could not be checked."""
+    """Return active alert labels and the associated provider credits."""
     try:
         data = request_qweather("current", service="weatheralert")
         if data.get("metadata", {}).get("zeroResult") is True:
-            return []
+            return [], ()
 
         alerts = data["alerts"]
         superseded = {
@@ -165,10 +165,17 @@ def get_weather_alerts(now):
             else:
                 key = ("record", alert.get("id") or headline or len(labels))
             labels.setdefault(key, label)
-        return list(labels.values())
+        credits = (
+            *(data.get("metadata", {}).get("attributions") or ()),
+            *((data.get("refer") or {}).get("sources") or ()),
+            *(alert.get("senderName") for alert in active),
+        )
+        return list(labels.values()), tuple(dict.fromkeys(
+            credit for credit in credits if isinstance(credit, str) and credit.strip()
+        ))
     except (requests.RequestException, ValueError, TypeError, KeyError, AttributeError, OverflowError) as error:
         print(f"[天气] 实时预警获取失败: {type(error).__name__}")
-        return None
+        return None, ()
 
 
 def get_open_meteo_forecast():

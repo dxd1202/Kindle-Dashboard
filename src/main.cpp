@@ -1,11 +1,9 @@
 #include "renderer.hpp"
 #include <algorithm>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <json.hpp>
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -19,21 +17,7 @@ using json = nlohmann::json;
 namespace {
 constexpr int width = 1448;
 constexpr int height = 1077;
-const std::string defFont = "main-font.ttf";
 const std::string iconFont = "qweather-icons.ttf";
-
-using FontCache = std::map<std::string, std::unique_ptr<Font>>;
-using FontStacks = std::map<std::string, std::vector<Font*>>;
-
-std::string font_path(const std::string& name) {
-    namespace fs = std::filesystem;
-    const fs::path path(name);
-    if (!path.has_parent_path() && !fs::is_regular_file(path)) {
-        const auto bundled = fs::path("assets") / path;
-        if (fs::is_regular_file(bundled)) return bundled.string();
-    }
-    return name;
-}
 
 json read_config(const char* config_path) {
     std::ifstream configFile(config_path);
@@ -41,37 +25,6 @@ json read_config(const char* config_path) {
     json config;
     configFile >> config;
     return config;
-}
-
-FontStacks load_fonts(const json& config, FontCache& fontCache) {
-    FontStacks dashboardFonts;
-    // 预加载核心字体
-    fontCache[defFont] = std::make_unique<Font>(font_path(defFont));
-    fontCache[iconFont] = std::make_unique<Font>(font_path(iconFont));
-    const auto fontConfig = config.value("dashboard_fonts", json::object());
-    for (const auto& weight : {"Regular", "Bold", "SemiBold"}) {
-        if (!fontConfig.contains(weight)) continue;
-        for (const auto& entry : fontConfig.at(weight)) {
-            const auto path = entry.get<std::string>();
-            if (!fontCache.count(path)) fontCache[path] = std::make_unique<Font>(path);
-            dashboardFonts[weight].push_back(fontCache.at(path).get());
-        }
-    }
-    return dashboardFonts;
-}
-
-std::vector<Font*> widget_fonts(const std::string& name, const std::string& weight,
-                               const FontCache& cache, const FontStacks& stacks) {
-    if (name == defFont && stacks.count(weight)) {
-        auto fonts = stacks.at(weight);
-        fonts.push_back(cache.at(iconFont).get());
-        fonts.push_back(cache.at(defFont).get());
-        return fonts;
-    }
-    std::vector<Font*> fonts{cache.at(name).get()};
-    if (name != iconFont) fonts.push_back(cache.at(iconFont).get());
-    if (name != defFont) fonts.push_back(cache.at(defFont).get());
-    return fonts;
 }
 
 int font_baseline(const Font& font, int size) {
@@ -106,7 +59,8 @@ void draw_emphasized_text(const json& item, const std::string& content,
 }
 
 void draw_widgets(const json& config, std::vector<unsigned char>& bitmap,
-                  FontCache& fontCache, const FontStacks& dashboardFonts) {
+                  const std::vector<Font*>& regularFonts, const std::vector<Font*>& boldFonts,
+                  const std::vector<Font*>& iconFonts) {
     if (!config.contains("widgets") || !config["widgets"].is_array()) {
         throw std::runtime_error("Config must contain a widgets array");
     }
@@ -128,27 +82,15 @@ void draw_widgets(const json& config, std::vector<unsigned char>& bitmap,
         std::string content = item.value("content", "");
         if (content.empty()) continue;
 
-        std::string fontName = item.value("font", defFont);
-        if (fontCache.find(fontName) == fontCache.end()) {
-            try {
-                fontCache[fontName] = std::make_unique<Font>(font_path(fontName));
-            }
-            catch (...) {
-                fontName = defFont;
-            }
-        }
-
+        const bool icon = item.value("font", "") == iconFont;
         const bool bold = item.value("bold", false);
-        const auto bold_weight = dashboardFonts.count("Bold") ? "Bold" : "SemiBold";
-        const auto weight = bold ? bold_weight : "Regular";
-        const auto activeFonts = widget_fonts(fontName, weight, fontCache, dashboardFonts);
+        const auto& activeFonts = icon ? iconFonts : (bold ? boldFonts : regularFonts);
         if (item.contains("emphasis")) {
             draw_emphasized_text(item, content, bitmap, activeFonts,
-                                 widget_fonts(fontName, bold_weight, fontCache, dashboardFonts),
-                                 fontName != defFont || !dashboardFonts.count(bold_weight));
+                                 icon ? iconFonts : boldFonts, icon);
             continue;
         }
-        const bool synthetic_bold = bold && (fontName != defFont || !dashboardFonts.count(weight));
+        const bool synthetic_bold = bold && icon;
 
         int x = item.value("x", 0);
         int size = item.value("size", 40);
@@ -248,11 +190,14 @@ int main(int argc, char* argv[]) {
         const char* config_path = argv[1];
         const char* output_path = argv[2];
         const auto config = read_config(config_path);
-        FontCache fontCache;
-        const auto dashboardFonts = load_fonts(config, fontCache);
+        Font interRegular("assets/fonts/Inter-Regular.ttf");
+        Font interSemiBold("assets/fonts/Inter-SemiBold.ttf");
+        Font sarasaRegular("assets/fonts/SarasaGothicSC-Regular.ttf");
+        Font sarasaBold("assets/fonts/SarasaGothicSC-Bold.ttf");
+        Font weatherIcons("assets/" + iconFont);
         std::vector<unsigned char> bitmap(width * height, 255);
         std::cout << "--- 正在解析布局并渲染 ---" << std::endl;
-        draw_widgets(config, bitmap, fontCache, dashboardFonts);
+        draw_widgets(config, bitmap, {&interRegular, &sarasaRegular}, {&interSemiBold, &sarasaBold}, {&weatherIcons});
         write_rotated_png(bitmap, output_path);
     }
     catch (const std::exception& e) {

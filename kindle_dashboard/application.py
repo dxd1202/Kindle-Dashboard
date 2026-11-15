@@ -20,6 +20,7 @@ class WeatherSnapshot:
     status: str = "预报暂无数据"
     current: dict | None = None
     current_aqi: str | None = None
+    alert_credits: tuple[str, ...] = ()
 
 
 def collect_weather():
@@ -53,7 +54,7 @@ def collect_weather():
         if weather.forecast:
             weather.fetched_at = datetime.now(BEIJING)
         weather.air_quality = air_quality.result()
-        weather.alerts = alerts.result()
+        weather.alerts, weather.alert_credits = alerts.result()
         weather.current = current.result()
         weather.current_aqi = current_aqi.result()
     return weather

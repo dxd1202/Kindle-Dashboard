@@ -2,7 +2,7 @@
 output=$1
 [ -n "$output" ] || exit 1
 dir=$(dirname "$0")/..
-url=https://dxd1202.github.io/Kindle-Dashboard/output.png
+url=${DASHBOARD_IMAGE_URL:-https://dxd1202.github.io/Kindle-Dashboard/output.png}
 tmp=$(mktemp "${output}.XXXXXX") || exit 1
 trap 'rm -f "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM

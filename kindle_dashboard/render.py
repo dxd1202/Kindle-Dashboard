@@ -10,27 +10,6 @@ from time import perf_counter
 from .config import BUILD, ROOT
 
 
-def system_font(family, style):
-    try:
-        result = subprocess.run(
-            ["fc-match", "-f", "%{family}\n%{style}\n%{file}", f"{family}:style={style}"],
-            check=True, capture_output=True, text=True,
-        )
-        families, styles, path = result.stdout.splitlines()
-    except (OSError, ValueError, subprocess.CalledProcessError):
-        return None
-    if family in families.split(",") and style in styles.split(",") and Path(path).is_file():
-        return path
-    return None
-
-
-def add_system_fonts(config):
-    for weight, latin_weight in (("Regular", "Regular"), ("Bold", "SemiBold")):
-        stack = [system_font("Inter", latin_weight), system_font("Sarasa Gothic SC", weight)]
-        if all(stack):
-            config.setdefault("dashboard_fonts", {})[weight] = stack
-
-
 def build_renderer():
     started = perf_counter()
     configured = BUILD / ".dashboard-cmake-configured"
