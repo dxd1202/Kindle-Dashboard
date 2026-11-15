@@ -55,6 +55,7 @@ Thumbs.db
 desktop.ini
 # Local settings and old Markdown tasks
 dashboard.local.json
+/local-data/
 /tasks.local.md
 
 # Synthetic calendar used by the regression tests

@@ -2,11 +2,11 @@
 
 ## 第一次用示例发布
 
-1. Fork 仓库，进入 fork 的 **Actions**，启用工作流。
+1. 登录 GitHub，在项目页点击 **Fork**，创建自己的公开 fork。进入 fork 的 **Actions**，按页面提示启用工作流。
 2. 在 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。
-3. 在 **Settings → Secrets and variables → Actions → Variables** 添加 `PAGES_USE_ACTIONS`，值为 `true`。
+3. 在 **Settings → Secrets and variables → Actions → Variables** 点击 **New repository variable**，添加 `PAGES_USE_ACTIONS`，值填 `true`。本次示例发布只需要这一个变量。
 4. 打开 **Actions → Kindle Dashboard Auto Update → Run workflow**，选择默认分支，勾选 **Publish the offline sample dashboard**，再运行工作流。
-5. 部署完成后打开 `https://你的用户名.github.io/仓库名/output.png`。用未登录窗口确认能看到灰度 PNG，再把这个地址写入 Kindle 的 `DASHBOARD_IMAGE_URL`。
+5. 等 `deploy` 作业成功。从部署链接复制站点地址，在其末尾加上 `/output.png`，例如 `https://你的用户名.github.io/Kindle-Dashboard/output.png`。用未登录窗口确认显示完整图片，再把这个地址写入 Kindle 的 `DASHBOARD_IMAGE_URL`。
 
 原仓库的分支发布方式仍可通过省略 `PAGES_USE_ACTIONS` 使用，该方式将图片写到 `gh-pages`。
 
