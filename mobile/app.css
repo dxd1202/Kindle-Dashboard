@@ -68,6 +68,33 @@ button,a,input,summary {
   letter-spacing: -.045em;
 }
 
+.masthead-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.update-dashboard {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--deep);
+  font-size: .86rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.update-dashboard:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+#update-form {
+  margin-top: 12px;
+}
+
 .refresh {
   border: 0;
   border-radius: 10px;
