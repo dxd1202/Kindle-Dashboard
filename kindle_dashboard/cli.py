@@ -26,9 +26,11 @@ def main():
     parser.add_argument("--web-data", choices=("demo", "weather", "personal"), default="demo",
                         help="手机版数据范围，默认仅发布示例")
     parser.add_argument("--web-locations", action="store_true", help="在个人版中显示日程地点")
+    parser.add_argument("--web-task-target", nargs=3, metavar=("REPOSITORY", "BRANCH", "FILE"),
+                        help="为手机版启用 GitHub 任务编辑")
     args = parser.parse_args()
     if args.edit_tasks:
-        if args.demo or args.offline or args.hide_timetable or args.output or args.web_output:
+        if args.demo or args.offline or args.hide_timetable or args.output or args.web_output or args.web_task_target:
             parser.error("--edit-tasks 请单独使用")
         from .task_editor import run_editor
 
@@ -41,6 +43,16 @@ def main():
         parser.error("--web-data 和 --web-locations 需要 --web-output")
     if args.web_locations and args.web_data != "personal":
         parser.error("--web-locations 需要 --web-data personal")
+    task_target = None
+    if args.web_task_target:
+        if not args.web_output or args.demo or args.web_data == "demo":
+            parser.error("--web-task-target 需要 --web-output 和实时手机版")
+        from .mobile import web_task_target
+
+        try:
+            task_target = web_task_target(*args.web_task_target)
+        except ValueError as error:
+            parser.error(str(error))
     snapshot = collect_dashboard(demo=args.demo, offline=args.offline, hide_personal=args.hide_timetable,
                                  include_end=bool(args.web_output) and args.web_data == "personal")
     render(snapshot.layout(), output=args.output)
@@ -50,4 +62,5 @@ def main():
         mobile = snapshot
         if args.web_data == "demo" and (not snapshot.demo or snapshot.hide_personal):
             mobile = collect_dashboard(demo=True, offline=True, hide_personal=False)
-        export_mobile(mobile, args.web_output, mode=args.web_data, show_locations=args.web_locations)
+        export_mobile(mobile, args.web_output, mode=args.web_data, show_locations=args.web_locations,
+                      task_target=task_target)

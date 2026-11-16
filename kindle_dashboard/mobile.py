@@ -2,15 +2,29 @@
 
 from datetime import timedelta
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 from shutil import copyfile
 from tempfile import TemporaryDirectory
 
-from .config import ASSETS, ROOT, WEATHER_LOCATION, WEEKDAYS
+from .config import ASSETS, ROOT, WEATHER_LOCATION, WEEKDAYS, load_settings
 from .layout.header import semester_progress
-from .tasks import deadline_label
+from .tasks import deadline_label, task_file
 
 WEB = Path(__file__).with_name("mobile_web")
+
+
+def web_task_target(repository, branch, filename):
+    path = PurePosixPath(filename)
+    resolved = (ROOT / path).resolve()
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repository) or not branch:
+        raise ValueError("请提供 GitHub 仓库名和发布分支")
+    if (path.is_absolute() or ".." in path.parts or path.suffix != ".json"
+            or any(part.startswith(".") for part in path.parts)
+            or not resolved.is_relative_to(ROOT.resolve())
+            or task_file(load_settings()).resolve() != resolved or not resolved.is_file()):
+        raise ValueError("手机版任务文件必须是当前看板正在读取的仓库内 JSON 文件")
+    return {"repository": repository, "branch": branch, "path": path.as_posix()}
 
 
 def mobile_payload(snapshot, *, mode, show_locations=False):
@@ -90,12 +104,14 @@ def mobile_payload(snapshot, *, mode, show_locations=False):
     }
 
 
-def export_mobile(snapshot, output, *, mode, show_locations):
+def export_mobile(snapshot, output, *, mode, show_locations, task_target=None):
     output.mkdir(parents=True, exist_ok=True)
     payload = mobile_payload(snapshot, mode=mode, show_locations=show_locations or snapshot.demo)
+    if task_target and not snapshot.demo:
+        payload["task_editor"] = task_target
     with TemporaryDirectory(dir=output) as stage_dir:
         stage = Path(stage_dir)
-        for name in ("index.html", "app.css", "app.js"):
+        for name in ("index.html", "app.css", "app.js", "task-sync.js"):
             copyfile(WEB / name, stage / name)
         copyfile(ASSETS / "qweather-icons.ttf", stage / "qweather-icons.ttf")
         copyfile(ROOT / "licenses/QWeather-Icons-MIT.txt", stage / "qweather-icons-LICENSE.txt")

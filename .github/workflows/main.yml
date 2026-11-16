@@ -34,6 +34,7 @@ jobs:
           DEMO: ${{ inputs.demo }}
           MOBILE_DATA: ${{ vars.MOBILE_DATA || 'demo' }}
           MOBILE_SHOW_LOCATIONS: ${{ vars.MOBILE_SHOW_LOCATIONS }}
+          MOBILE_TASK_EDIT: ${{ vars.MOBILE_TASK_EDIT }}
           PYTHONIOENCODING: utf-8
         run: |
           publish_dir="$(mktemp -d "$RUNNER_TEMP/kindle-pages.XXXXXX")"
@@ -78,6 +79,9 @@ jobs:
             mobile_args=(--web-output "$publish_dir/mobile" --web-data "$MOBILE_DATA")
             if [ "$MOBILE_DATA" = personal ] && [ "$MOBILE_SHOW_LOCATIONS" = true ]; then
               mobile_args+=(--web-locations)
+            fi
+            if [ "$MOBILE_TASK_EDIT" = true ] && [ "$MOBILE_DATA" != demo ]; then
+              mobile_args+=(--web-task-target "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$TASKS_FILE")
             fi
             python main.py --output "$publish_dir/output.png" "${mobile_args[@]}"
           fi

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from kindle_dashboard.application import collect_dashboard
 from kindle_dashboard.demo import DEMO_NOW
-from kindle_dashboard.mobile import export_mobile, mobile_payload
+from kindle_dashboard.mobile import export_mobile, mobile_payload, web_task_target
 from kindle_dashboard.sources.timetable import get_two_day_schedule
 
 
@@ -21,12 +21,29 @@ class MobileTests(unittest.TestCase):
             output = Path(directory)
             export_mobile(self.demo, output, mode="demo", show_locations=False)
             data = json.loads((output / "dashboard.json").read_text())
-            self.assertTrue({"index.html", "app.js", "app.css", "qweather-icons.ttf",
+            self.assertTrue({"index.html", "app.js", "task-sync.js", "app.css", "qweather-icons.ttf",
                              "qweather-icons-LICENSE.txt"} <= {file.name for file in output.iterdir()})
             self.assertEqual(data["next_event"], {
                 "time": "14:30", "end": "16:05", "name": "数电实验", "place": "实验室", "day": "今天",
             })
             self.assertEqual(len(data["weather"]["forecast"]), 7)
+            self.assertNotIn("task_editor", data)
+
+    @patch.dict("os.environ", {"TASKS_FILE": "examples/tasks.json"})
+    def test_editor_target_uses_the_same_task_file_as_the_renderer(self):
+        target = web_task_target("owner/repo", "main", "examples/tasks.json")
+        with self.assertRaises(ValueError):
+            web_task_target("owner/repo", "main", "tasks.local.json")
+        with self.assertRaises(ValueError):
+            web_task_target("owner/repo", "main", "../tasks.json")
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            live = replace(self.demo, demo=False)
+            export_mobile(live, output, mode="weather", show_locations=False, task_target=target)
+            data = json.loads((output / "dashboard.json").read_text())
+            self.assertEqual(data["task_editor"], target)
+            self.assertFalse(data["personal"])
+            self.assertEqual(data["todos"], [])
 
     def test_live_data_export_requires_an_explicit_personal_mode(self):
         live = replace(self.demo, demo=False)

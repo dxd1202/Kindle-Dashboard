@@ -408,3 +408,35 @@ details>p {
 [hidden] {
   display: none!important;
 }
+
+.capture-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.capture-line .search { min-width: 0; margin: 0; }
+.capture-form > .search { margin-bottom: 8px; }
+
+.primary, .complete {
+  cursor: pointer;
+  background: var(--deep);
+  color: white;
+  border: 1px solid var(--deep);
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.primary:disabled, .complete:disabled { opacity: .5; cursor: default; }
+.capture-form > .link { margin-left: 12px; }
+.capture-options { margin-top: 4px; }
+.capture-options summary { min-height: 44px; color: var(--accent); font-size: .82rem; }
+.capture-options label { display: block; margin: 6px 0 10px; color: var(--muted); font-size: .82rem; }
+.capture-options input { max-width: 100%; min-height: 42px; margin-top: 4px; }
+.task-capture .panel-head button { background: transparent; border: 0; min-height: 36px; color: var(--accent); cursor: pointer; }
+.task-message { margin: 7px 0 12px; }
+.tick-row { align-items: center; }
+.complete { flex: 0 0 44px; padding: 0; background: transparent; color: var(--accent); border-color: var(--rule); }
