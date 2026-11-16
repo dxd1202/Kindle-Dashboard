@@ -24,6 +24,12 @@ let draftTitle = "";
 let draftDue = "";
 let draftId = "";
 let editingTask = null;
+let calendarDraft = null;
+let calendarToken = "";
+let calendarBusy = false;
+let calendarMessage = "";
+let calendarRun = "";
+let savedCalendarRevision = "";
 const editorFilters = [["open", "进行中"], ["due", "有截止"], ["done", "已完成"], ["all", "全部"]];
 
 function clearTaskDraft() {
@@ -364,10 +370,119 @@ async function changeTask(tasks, {action, addedId}) {
   }
 }
 
+function openCalendarDraft(day, event) {
+  if (refresh.disabled || calendarBusy) return;
+  calendarMessage = calendarRun = "";
+  calendarDraft = {
+    action: event ? "edit" : "add",
+    first_day: data.today,
+    revision: data.calendar_editor.revision,
+    id: event?.id,
+    title: event?.name || "",
+    start: event?.start || `${day.date}T09:00`,
+    end: event?.end || "",
+    all_day: Boolean(event?.all_day),
+  };
+  if (data.calendar_editor.show_locations) calendarDraft.place = event?.place || "";
+  render();
+  main.querySelector(".calendar-form input")?.focus();
+}
+
+function calendarForm(target) {
+  const draft = calendarDraft;
+  const form = element("form", "panel calendar-form");
+  form.append(element("h2", "", draft.action === "add" ? "新增日程" : "编辑日程"));
+  function input(key, label, type, required = false) {
+    const field = element("input", "");
+    field.type = type;
+    field.required = required;
+    field.disabled = calendarBusy;
+    if (type === "datetime-local") field.step = "1";
+    if (type === "checkbox") field.checked = draft[key];
+    else field.value = draft[key];
+    field.addEventListener("input", () => {
+      draft[key] = type === "checkbox" ? field.checked : field.value;
+    });
+    form.append(element("label", "editor-field", label, field));
+    return field;
+  }
+  input("title", "日程名称", "text", true).maxLength = 160;
+  const allDay = input("all_day", "全天", "checkbox");
+  allDay.parentElement.classList.add("calendar-all-day");
+  allDay.addEventListener("change", () => {
+    for (const field of ["start", "end"]) {
+      if (draft[field]) draft[field] = draft.all_day ? draft[field].slice(0, 10)
+        : `${draft[field]}T${field === "start" ? "09:00" : "10:00"}`;
+    }
+    if (draft.all_day && draft.end <= draft.start) draft.end = "";
+    render();
+    main.querySelector(".calendar-all-day input")?.focus();
+  });
+  const dateType = draft.all_day ? "date" : "datetime-local";
+  input("start", draft.all_day ? "开始日期" : "开始时间（北京时间）", dateType, true);
+  input("end", draft.all_day ? "结束日期（可选，填写日程最后一天的次日）" : "结束时间（可选）", dateType);
+  if (target.show_locations) input("place", "地点（可选）", "text").maxLength = 160;
+  const token = element("input", "");
+  token.type = "password";
+  token.autocomplete = "off";
+  token.disabled = calendarBusy;
+  const sharedToken = data.task_editor?.repository === target.repository &&
+    data.task_editor.branch === target.branch ? taskClient?.token : "";
+  const existing = calendarToken || sharedToken;
+  token.required = !existing;
+  form.append(element("label", "editor-field", existing ? "GitHub 令牌（可更换）" : "GitHub 令牌（Actions 读写）", token));
+  const save = element("button", "primary", "保存");
+  save.disabled = calendarBusy || draft.revision !== target.revision;
+  const cancel = choice("取消", false, () => {
+    calendarDraft = null;
+    calendarMessage = calendarRun = "";
+    render();
+  });
+  cancel.disabled = calendarBusy;
+  if (draft.revision !== target.revision) form.append(element("p", "task-message", "日历已更新，请取消后重新打开。"));
+  form.append(element("div", "editor-actions", save, cancel));
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (save.disabled || refresh.disabled || !draft.title.trim()) return;
+    const auth = token.value.trim() || existing;
+    if (!auth) return;
+    if (draft.end && draft.end <= draft.start) {
+      calendarMessage = "结束时间必须晚于开始时间。";
+      render();
+      return;
+    }
+    calendarToken = auth;
+    calendarBusy = true;
+    calendarRun = "";
+    calendarMessage = "正在提交…";
+    render();
+    try {
+      await publishCalendarEdit(target, calendarToken, draft, (message, runUrl) => {
+        calendarMessage = message;
+        calendarRun = runUrl;
+        render();
+      });
+      savedCalendarRevision = draft.revision;
+      calendarDraft = null;
+      calendarMessage = "已保存并发布。";
+    } catch (error) {
+      calendarMessage = error.message;
+    } finally {
+      calendarBusy = false;
+      if (!calendarDraft) await load();
+      render();
+    }
+  });
+  return form;
+}
+
 function schedule() {
   hero("日程", "今天和明天 · 北京时间");
   const switcher = element("div", "switch");
   const body = element("section", "panel");
+  const controls = element("div", "calendar-controls");
+  const target = data.calendar_editor;
+  const waitingForPages = target && target.revision === savedCalendarRevision;
   const buttons = data.days.map((day, index) => choice(
     `${index ? "明天" : "今天"} · ${dateLabel(day.date)}`, index === selectedDay, () => {
       selectedDay = index;
@@ -377,13 +492,42 @@ function schedule() {
   function update() {
     buttons.forEach((button, index) => button.setAttribute("aria-pressed", index === selectedDay));
     const day = data.days[selectedDay];
-    body.replaceChildren(day.events.length
-      ? element("ul", "rows", ...day.events.map(event => row(event.time, event.name,
-        [event.end && `至 ${event.end}`, event.place].filter(Boolean).join(" · "))))
+    if (target) {
+      const add = choice("新增日程", false, () => openCalendarDraft(day));
+      add.className = "primary";
+      add.disabled = calendarBusy || waitingForPages;
+      controls.replaceChildren(add);
+      if (calendarDraft) controls.append(calendarForm(target));
+      if (calendarMessage) {
+        const message = element("p", "task-message", waitingForPages
+          ? "已保存到 GitHub，网页数据正在更新。稍后点右上角刷新。" : calendarMessage);
+        message.setAttribute("role", "status");
+        if (calendarRun) message.append(" ", link("查看运行记录", calendarRun));
+        controls.append(message);
+      }
+    }
+    const rows = day.events.map(event => {
+      const end = event.end?.includes("T") && event.end.slice(0, 10) === day.date
+        ? event.end.slice(11, 16) : event.end?.replace("T", " ").replace(/(:\d\d):\d\d$/, "$1");
+      const node = row(event.time, event.name, [
+        end && !event.all_day && `至 ${end}`, event.place, event.repeating && "重复日程",
+      ].filter(Boolean).join(" · "));
+      if (target && event.id) {
+        const edit = choice(event.repeating ? "编辑这一次" : "编辑", false, () => openCalendarDraft(day, event));
+        edit.className = "text-button";
+        edit.disabled = calendarBusy || waitingForPages;
+        edit.setAttribute("aria-label", `${edit.textContent} ${event.name}`);
+        node.classList.add("calendar-row");
+        node.append(edit);
+      }
+      return node;
+    });
+    body.replaceChildren(rows.length
+      ? element("ul", "rows", ...rows)
       : element("p", "empty", data.schedule_status || "暂无日程"));
   }
   switcher.append(...buttons);
-  main.append(switcher, body);
+  main.append(switcher, controls, body);
   update();
 }
 
@@ -465,10 +609,10 @@ function render() {
 }
 
 async function load() {
-  if (refresh.disabled || taskBusy) return;
+  if (refresh.disabled || taskBusy || calendarBusy) return;
   refresh.disabled = true;
   try {
-    const response = await fetch("dashboard.json", { cache: "no-store" });
+    const response = await fetch(`dashboard.json?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const snapshot = await response.json();
     if (snapshot.version !== 1 || !Array.isArray(snapshot.weather?.forecast)) throw new Error("Unsupported dashboard data");
@@ -487,6 +631,11 @@ async function load() {
     } else if (taskClient) {
       try { updateTaskSnapshot(await taskClient.read()); }
       catch (error) { taskMessage = error.message; }
+    }
+    if (data && (data.calendar_editor?.repository !== snapshot.calendar_editor?.repository ||
+                 data.calendar_editor?.branch !== snapshot.calendar_editor?.branch)) {
+      calendarToken = calendarMessage = calendarRun = savedCalendarRevision = "";
+      calendarDraft = null;
     }
     data = snapshot;
     issue = "";

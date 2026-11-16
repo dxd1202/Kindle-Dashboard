@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 from shutil import copyfile
@@ -109,9 +110,27 @@ def export_mobile(snapshot, output, *, mode, show_locations, task_target=None):
     payload = mobile_payload(snapshot, mode=mode, show_locations=show_locations or snapshot.demo)
     if task_target and not snapshot.demo:
         payload["task_editor"] = task_target
+    if (mode == "personal" and payload["personal"] and not snapshot.demo
+            and os.environ.get("MOBILE_CALENDAR_EDIT") == "true"):
+        from .mobile_calendar import mobile_calendar
+
+        calendar = mobile_calendar().snapshot(payload["today"])
+        payload["calendar_editor"] = {
+            "repository": os.environ["GITHUB_REPOSITORY"],
+            "branch": os.environ["GITHUB_REF_NAME"],
+            "revision": calendar["revision"],
+            "show_locations": show_locations,
+        }
+        fields = ("id", "start", "end", "time", "name", "all_day", "repeating")
+        if show_locations:
+            fields += ("place",)
+        entries_by_date = {day["date"]: day["events"] for day in calendar["days"]}
+        for day in payload["days"]:
+            day["events"] = [{key: event[key] for key in fields if key in event}
+                             for event in entries_by_date.get(day["date"], ())]
     with TemporaryDirectory(dir=output) as stage_dir:
         stage = Path(stage_dir)
-        for name in ("index.html", "app.css", "app.js", "task-sync.js"):
+        for name in ("index.html", "app.css", "app.js", "task-sync.js", "calendar-sync.js"):
             copyfile(WEB / name, stage / name)
         copyfile(ASSETS / "qweather-icons.ttf", stage / "qweather-icons.ttf")
         copyfile(ROOT / "licenses/QWeather-Icons-MIT.txt", stage / "qweather-icons-LICENSE.txt")

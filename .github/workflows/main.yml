@@ -6,6 +6,10 @@ on:
         description: Publish the offline sample dashboard
         type: boolean
         default: false
+      calendar_change:
+        description: Calendar edit submitted by the mobile dashboard
+        type: string
+        default: ''
 
 concurrency:
   group: kindle-dashboard-pages
@@ -18,9 +22,34 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
 
       - name: Setup Dependencies
         run: python -m pip install -r requirements.txt
+
+      - name: Save mobile calendar edit
+        if: inputs.calendar_change != ''
+        env:
+          CALENDAR_CHANGE: ${{ inputs.calendar_change }}
+          DEMO: ${{ inputs.demo }}
+          ICS_FILE: ${{ vars.ICS_FILE || '2026Autumn.ics' }}
+          MOBILE_DATA: ${{ vars.MOBILE_DATA }}
+          MOBILE_CALENDAR_EDIT: ${{ vars.MOBILE_CALENDAR_EDIT }}
+          MOBILE_SHOW_LOCATIONS: ${{ vars.MOBILE_SHOW_LOCATIONS }}
+        run: |
+          if [ "$DEMO" = true ] || [ "$MOBILE_DATA" != personal ] ||
+             [ "$MOBILE_CALENDAR_EDIT" != true ] || [ "$GITHUB_REF_TYPE" != branch ]; then
+            echo "Mobile calendar editing is disabled for this workflow run"
+            exit 1
+          fi
+          git --literal-pathspecs ls-files --error-unmatch -- "$ICS_FILE" >/dev/null
+          python -m kindle_dashboard.mobile_calendar
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git --literal-pathspecs add -- "$ICS_FILE"
+          git commit -m 'Update dashboard calendar from mobile'
+          git push origin "HEAD:refs/heads/$GITHUB_REF_NAME"
 
       - name: Generate full dashboard
         id: public
@@ -35,6 +64,7 @@ jobs:
           MOBILE_DATA: ${{ vars.MOBILE_DATA || 'demo' }}
           MOBILE_SHOW_LOCATIONS: ${{ vars.MOBILE_SHOW_LOCATIONS }}
           MOBILE_TASK_EDIT: ${{ vars.MOBILE_TASK_EDIT }}
+          MOBILE_CALENDAR_EDIT: ${{ vars.MOBILE_CALENDAR_EDIT }}
           PYTHONIOENCODING: utf-8
         run: |
           publish_dir="$(mktemp -d "$RUNNER_TEMP/kindle-pages.XXXXXX")"

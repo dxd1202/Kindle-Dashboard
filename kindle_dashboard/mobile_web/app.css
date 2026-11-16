@@ -448,4 +448,9 @@ details>p {
   color: var(--ink);
 }
 .editor-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.calendar-controls:empty { display: none; }
+.calendar-form { margin-top: 12px; }
+.calendar-all-day { display: flex; align-items: center; }
+.calendar-all-day input { width: auto; min-height: auto; }
+.row.calendar-row { grid-template-columns: 58px minmax(0, 1fr) auto; }
 .editing { border-color: var(--accent); }

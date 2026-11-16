@@ -53,6 +53,13 @@
 
 碰到「任务清单已被修改」时，页面会读取最新清单。确认最新内容后再重试。电脑如果也使用本地编辑器，编辑前先拉取 GitHub 上的新提交。
 
+## 手机上新增和编辑日程
+
+1. 在 Actions 仓库变量中设置 `MOBILE_DATA=personal` 和 `MOBILE_CALENDAR_EDIT=true`。确认 `ICS_FILE` 指向分支中已提交的日历文件，然后运行一次 **Kindle Dashboard Auto Update**。
+2. 给仅限此仓库的细粒度 GitHub 令牌增加 **Actions** 读写权限。如果同一个令牌用于编辑待办，也要保留 **Contents** 读写权限。
+3. 在手机版打开「日程」，点「新增日程」或在条目旁点「编辑」。保存时使用 GitHub 令牌。重复日程的改动只应用于选中的那一次。地点字段跟随 `MOBILE_SHOW_LOCATIONS` 设置。
+4. 等待页面显示「已保存并发布」。工作流会提交 ICS，并更新手机网页和 Kindle 图片。手机上的每一次保存都由工作流完成，无需手动 push。遇到失败时可从页面打开 GitHub Actions 的运行记录。
+
 ## 定时更新
 
 先成功运行一次手动发布。使用 cron-job.org 时，可以配置一个定时发送的 `POST` 请求，调用 GitHub 的工作流分派接口。
