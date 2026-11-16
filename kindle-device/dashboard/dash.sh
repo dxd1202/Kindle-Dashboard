@@ -95,6 +95,27 @@ wifi_state() {
     wpa_cli -i wlan0 status 2>/dev/null | sed -n 's/^wpa_state=//p'
 }
 
+log_wifi_status() {
+    details=$(wpa_cli -i wlan0 status verbose 2>/dev/null)
+    case "$details" in
+        *wpa_state=*) ;;
+        *) details=$(wpa_cli -i wlan0 status 2>/dev/null) ;;
+    esac
+    summary=$(printf '%s\n' "$details" | awk -F= '
+        /^(wpa_state|bssid|freq|key_mgmt|Supplicant PAE state|suppPortStatus|EAP state|selectedMethod)=/ {
+            printf "%s%s", separator, $0
+            separator = " | "
+        }
+        /^ip_address=./ { has_ip = 1 }
+        END {
+            if (separator != "") {
+                printf "%sIP reported=%s", separator, has_ip ? "yes" : "no"
+            }
+        }
+    ')
+    log "Wi-Fi snapshot ($1): ${summary:-supplicant status unavailable}."
+}
+
 wait_for_wifi() {
     unknown_checks=0
     for attempt in 1 2 3 4 5 6 7 8 9 10; do
@@ -115,6 +136,7 @@ wait_for_wifi() {
         esac
     done
     log "Wi-Fi did not report association after 10 checks."
+    log_wifi_status "association timed out"
     return 1
 }
 
@@ -148,6 +170,7 @@ reset_wifi() {
 
 network_failures=0
 next_wifi_reset=0
+log_wifi_status "dashboard started"
 while :; do
     /bin/sh "$dir/local/fetch-dashboard.sh" "$image"
     fetch_status=$?
@@ -163,6 +186,9 @@ while :; do
             log "Wi-Fi is switched off; enable it in Kindle settings."
         elif [ "$fetch_status" -eq 1 ]; then
             network_failures=$((network_failures + 1))
+            if [ "$network_failures" -eq 1 ]; then
+                log_wifi_status "before recovery"
+            fi
             if [ "$network_failures" -eq 1 ] && [ "$state" = COMPLETED ]; then
                 next_wifi_reset=2
             fi
@@ -181,6 +207,9 @@ while :; do
         fi
     fi
 
+    if [ "$fetch_status" -eq 0 ] && [ "$network_failures" -gt 0 ]; then
+        log_wifi_status "download restored"
+    fi
     if [ "$fetch_status" -ne 1 ] || [ "${radio:-}" = 0 ]; then
         network_failures=0
         next_wifi_reset=0
