@@ -7,7 +7,7 @@
 3. 在 **Settings → Secrets and variables → Actions → Variables** 点击 **New repository variable**，添加 `PAGES_USE_ACTIONS`，值填 `true`。本次示例发布只需要这一个变量。
 4. 打开 **Actions → Kindle Dashboard Auto Update → Run workflow**，选择默认分支，勾选 **Publish the offline sample dashboard**，再运行工作流。
 5. 等 `deploy` 作业成功。从部署链接复制站点地址，在其末尾加上 `/output.png`，例如 `https://你的用户名.github.io/Kindle-Dashboard/output.png`。用未登录窗口确认显示完整图片，再把这个地址写入 Kindle 的 `DASHBOARD_IMAGE_URL`。
-6. 在同一个站点地址下打开 `/mobile/`。用手机检查总览、今天／明天切换、任务筛选和七天预报。鸿蒙用户可在华为浏览器里将页面添加到桌面。
+6. 在同一个站点地址下打开 `/mobile/`。用手机检查待办添加和勾完成、今天／明天切换和七天预报。鸿蒙用户可在华为浏览器里将页面添加到桌面。
 
 原仓库的分支发布方式仍可通过省略 `PAGES_USE_ACTIONS` 使用，该方式将图片写到 `gh-pages`。
 
@@ -49,7 +49,7 @@
 1. 确认工作流的 `TASKS_FILE` 指向仓库中现有的任务 JSON。仓库默认文件是 `tasks.local.json`。
 2. 在仓库变量中设置 `MOBILE_TASK_EDIT=true`。如果希望公开网页只展示天气，设置 `MOBILE_DATA=weather`。如果也希望公开日程和待办，设置 `MOBILE_DATA=personal`。运行一次工作流，发布新版手机页面。
 3. 在 [GitHub 令牌设置](https://github.com/settings/personal-access-tokens/new) 创建一个限于此仓库的细粒度令牌，给 **Contents** 读写权限并设置到期日。这个权限覆盖指定仓库的内容。把令牌直接填入自己发布的手机页面，然后点「连接任务清单」。页面将令牌保留在当前页面内存中，只发送给 GitHub 的 API。刷新整个网页或关闭页面后需重新连接。
-4. 在首页输入待办并点「添加」，或点现有任务旁的勾。看到「已保存到 GitHub」后，等待下一次 Kindle 自动更新。公网仓库中写入的任务及提交历史对外可访问。
+4. 在待办页输入待办并点「添加」，或点现有任务旁的勾。看到「已保存到 GitHub」就说明网页已经提交了修改，无需手动 push。等待下一次 Kindle 自动更新，或在 Actions 手动运行一次出图。公网仓库中写入的任务及提交历史对外可访问。
 
 碰到「任务清单已被修改」时，页面会读取最新清单。确认最新内容后再重试。电脑如果也使用本地编辑器，编辑前先拉取 GitHub 上的新提交。
 

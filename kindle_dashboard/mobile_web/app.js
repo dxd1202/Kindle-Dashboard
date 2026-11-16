@@ -13,7 +13,7 @@ const beijingDate = new Intl.DateTimeFormat("zh-CN", {
 let data = null;
 let issue = "";
 let selectedDay = 0;
-let taskFilter = "all";
+let taskFilter = "open";
 let taskQuery = "";
 let taskClient = null;
 let taskSnapshot = null;
@@ -23,6 +23,29 @@ let taskMessage = "";
 let draftTitle = "";
 let draftDue = "";
 let draftId = "";
+let editingTask = null;
+const editorFilters = [["open", "进行中"], ["due", "有截止"], ["done", "已完成"], ["all", "全部"]];
+
+function clearTaskDraft() {
+  draftTitle = draftDue = draftId = "";
+  editingTask = null;
+}
+
+function updateTaskSnapshot(snapshot) {
+  if (editingTask && !snapshot.tasks.includes(editingTask)) {
+    const before = JSON.stringify(editingTask);
+    const matches = snapshot.tasks.filter(task => JSON.stringify(task) === before);
+    if (matches.length === 1) editingTask = matches[0];
+  }
+  taskSnapshot = snapshot;
+}
+
+function localDeadline(value) {
+  if (typeof value !== "string") return "";
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)) return value.slice(0, 19);
+  const stamp = Date.parse(value);
+  return Number.isFinite(stamp) ? new Date(stamp + 8 * 3600_000).toISOString().slice(0, 19) : "";
+}
 
 function element(tag, className, ...children) {
   const node = document.createElement(tag);
@@ -61,15 +84,18 @@ function timeLabel(value) {
   return beijingTime.format(new Date(value));
 }
 
-function showStatus() {
+function showStatus(view) {
   if (issue) {
     const previous = data ? ` · 保留 ${dateLabel(data.today)} ${timeLabel(data.updated)} 的数据` : "";
     status.textContent = `更新失败，点右上角重试${previous}`;
   } else if (data) {
     const stamp = `${dateLabel(data.today)} ${timeLabel(data.updated)}`;
     const stale = Date.now() - Date.parse(data.updated) > 150 * 60_000;
-    status.textContent = data.mode === "demo" ? "示例数据" : `${stale ? "数据可能已过期" : "看板更新"} · ${stamp}（北京时间）`;
+    status.textContent = data.mode === "demo" ? "示例数据"
+      : view === "tasks" && data.task_editor ? ""
+      : `${stale ? "数据可能已过期" : "看板更新"} · ${stamp}（北京时间）`;
   }
+  status.hidden = status.textContent === "";
   status.classList.toggle("error", Boolean(issue));
 }
 
@@ -85,7 +111,7 @@ function humidity(value) {
 
 function currentWeather() {
   const { current, forecast, aqi, status: weatherStatus, fetched } = data.weather;
-  const card = panel(`天气 · ${data.weather.location}`, link("七天预报 ›", "#weather"), "weather");
+  const card = panel("当前天气", null, "weather");
   if (current) {
     card.append(element("div", "weather-reading", glyph(current.icon),
       element("strong", "temperature", `${current.temperature}°`), current.condition || ""));
@@ -106,30 +132,6 @@ function currentWeather() {
   return card;
 }
 
-function overview() {
-  if (data.mode === "demo" || data.task_editor) {
-    hero("随手记", [dateLabel(data.today), data.weekday, data.semester].filter(Boolean).join(" · "));
-    main.append(taskControls());
-  } else {
-    hero(dateLabel(data.today), [data.weekday, data.semester].filter(Boolean).join(" · "));
-  }
-  showAlerts();
-  main.append(currentWeather());
-  if (data.personal) {
-    const event = data.next_event;
-    const eventCard = panel("下一条日程", link("全部日程 ›", "#schedule"));
-    eventCard.append(element("p", "prominent", event ? event.name : "暂无接下来的日程"));
-    if (event) eventCard.append(element("p", "", [event.day, event.time, event.place].filter(Boolean).join(" · ")));
-    const dueCard = panel("最近截止", link("截止与待办 ›", "#tasks"));
-    const deadline = data.deadlines.find(entry => !entry.overdue) || data.deadlines[0];
-    dueCard.append(element("p", "prominent", deadline ? deadline.title : "近期暂无截止"));
-    if (deadline) dueCard.append(element("p", deadline.overdue ? "overdue" : "", deadline.label));
-    main.append(data.mode === "demo" || data.task_editor ? eventCard
-      : element("div", "overview-grid", eventCard, dueCard));
-  }
-  main.append(element("p", "source", link("打开 Kindle 图片版", "../output.png")));
-}
-
 function choice(label, selected, action) {
   const button = element("button", "", label);
   button.type = "button";
@@ -144,18 +146,10 @@ function row(label, title, detail, overdue = false) {
   return element("li", "row", element("span", overdue ? "time overdue" : "time", label), content);
 }
 
-function taskControls(full = false) {
+function taskControls() {
   const demo = data.mode === "demo";
-  const card = panel("待办清单", taskClient
-    ? choice("断开", false, () => {
-      if (taskBusy || refresh.disabled) return;
-      taskClient = null;
-      taskSnapshot = null;
-      taskMessage = "";
-      render();
-    }) : null, "task-capture");
-  const message = element("p", "task-message", taskMessage || (demo
-    ? "示例操作仅在当前页面生效" : "保存后会在下一次 Kindle 更新时同步"));
+  const card = element("section", "task-capture");
+  const message = element("p", "task-message", taskMessage);
   message.setAttribute("role", "status");
   if (!demo && !taskClient) {
     const form = element("form", "capture-form");
@@ -181,7 +175,7 @@ function taskControls(full = false) {
       try {
         taskSnapshot = await client.read();
         taskClient = client;
-        taskMessage = "已连接，修改将写入 GitHub 任务清单";
+        taskMessage = "GitHub 已连接";
       } catch (error) {
         taskMessage = error.message;
       } finally {
@@ -189,7 +183,10 @@ function taskControls(full = false) {
         render();
       }
     });
-    card.append(form, message);
+    const connection = element("details", "panel connection",
+      element("summary", "", "连接 GitHub 待办"), form, message);
+    connection.open = Boolean(taskMessage);
+    card.append(connection);
     return card;
   }
 
@@ -200,54 +197,94 @@ function taskControls(full = false) {
   title.required = true;
   title.maxLength = 160;
   title.value = draftTitle;
-  title.placeholder = "记一件要做的事…";
-  title.setAttribute("aria-label", "新待办标题");
+  title.placeholder = "例如：提交实验报告";
   title.addEventListener("input", () => { draftTitle = title.value; draftId = ""; });
   const due = element("input", "");
   due.type = "datetime-local";
+  due.step = "1";
   due.disabled = taskBusy;
   due.value = draftDue;
-  due.setAttribute("aria-label", "截止时间（北京时间）");
   due.addEventListener("input", () => { draftDue = due.value; draftId = ""; });
-  const add = element("button", "primary", "添加");
-  add.disabled = taskBusy;
-  const options = element("details", "capture-options",
-    element("summary", "", "加个截止时间"), element("label", "", "北京时间 ", due));
-  options.open = Boolean(draftDue);
-  form.append(element("div", "capture-line", title, add), options);
+  const editIndex = editingTask ? taskSnapshot.tasks.indexOf(editingTask) : -1;
+  const add = element("button", "primary", editingTask ? "保存" : "添加");
+  add.disabled = taskBusy || Boolean(editingTask && editIndex < 0);
+  const controls = element("div", "editor-actions", add);
+  if (editingTask) {
+    const cancel = choice("取消", false, () => {
+      clearTaskDraft();
+      taskMessage = "";
+      render();
+    });
+    cancel.disabled = taskBusy;
+    controls.append(cancel);
+  }
+  form.append(element("h2", "", editingTask ? "编辑任务" : "新增任务"),
+    element("label", "editor-field", "任务名称", title),
+    element("label", "editor-field", "截止时间（可选，北京时间）", due), controls);
+  if (editingTask && editIndex < 0) {
+    form.append(element("p", "task-message overdue", "这项任务已在别处修改。请取消后从清单重新打开。"));
+  }
   form.addEventListener("submit", event => {
     event.preventDefault();
     if (!title.value.trim() || taskBusy || refresh.disabled) return;
+    const fields = { title: title.value.trim(), due: due.value || null };
+    if (editingTask) {
+      if (editIndex < 0) return;
+      const revised = taskSnapshot.tasks.map((item, offset) => offset === editIndex ? {...item, ...fields} : item);
+      changeTask(revised, {action: "edit"});
+      return;
+    }
     draftId ||= Array.from(crypto.getRandomValues(new Uint32Array(4)),
       number => number.toString(16).padStart(8, "0")).join("");
-    const entry = { id: draftId, title: title.value.trim(), due: due.value || null, done: false };
+    const entry = { id: draftId, ...fields, done: false };
     changeTask(taskSnapshot.tasks.some(task => task?.id === draftId) ? taskSnapshot.tasks
-      : [entry, ...taskSnapshot.tasks], draftId);
+      : [entry, ...taskSnapshot.tasks], {action: "add", addedId: draftId});
   });
+  if (editingTask) form.classList.add("editing");
+  form.classList.add("panel");
   card.append(form, message);
-  const active = taskSnapshot.tasks.flatMap((task, index) => {
-    if (!task || task.done || typeof task.title !== "string") return [];
-    const button = element("button", "complete", "✓");
-    button.type = "button";
-    button.disabled = taskBusy;
-    button.setAttribute("aria-label", `完成 ${task.title}`);
-    button.addEventListener("click", () => {
-      const revised = taskSnapshot.tasks.map((item, offset) => offset === index ? {...item, done: true} : item);
-      changeTask(revised);
+  const tasks = taskSnapshot.tasks.flatMap((task, index) => {
+    if (!task || typeof task.title !== "string") return [];
+    const checkbox = element("input", "complete");
+    checkbox.type = "checkbox";
+    checkbox.checked = Boolean(task.done);
+    checkbox.disabled = taskBusy || task === editingTask;
+    checkbox.setAttribute("aria-label", `${task.done ? "重新打开" : "完成"} ${task.title}`);
+    checkbox.addEventListener("change", () => {
+      const done = checkbox.checked;
+      checkbox.checked = Boolean(task.done);
+      const revised = taskSnapshot.tasks.map((item, offset) => offset === index ? {...item, done} : item);
+      changeTask(revised, {action: done ? "complete" : "reopen"});
     });
-    const node = element("li", "row tick-row", button,
-      element("div", "", element("strong", "", task.title),
-        typeof task.due === "string" && task.due ? element("small", "", task.due.replace("T", " ").slice(0, 16)) : ""));
+    const edit = element("button", "text-button", "编辑");
+    edit.type = "button";
+    edit.disabled = taskBusy;
+    edit.setAttribute("aria-label", `编辑 ${task.title}`);
+    edit.addEventListener("click", () => {
+      if (taskBusy || refresh.disabled) return;
+      editingTask = task;
+      draftTitle = task.title;
+      draftDue = localDeadline(task.due);
+      draftId = taskMessage = "";
+      render();
+      main.querySelector(".editing .editor-field input")?.focus();
+    });
+    const dueDate = localDeadline(task.due);
+    const clock = demo ? Date.parse(data.updated) : Date.now();
+    const overdue = Boolean(!task.done && dueDate && Date.parse(dueDate + "+08:00") <= clock);
+    const node = element("li", task.done ? "row tick-row done" : "row tick-row", checkbox,
+      element("div", "task-details", element("strong", "", task.title),
+        dueDate ? element("small", overdue ? "overdue" : "", `${overdue ? "逾期" : "截止"} ${dueDate.replace("T", " ").slice(0, 16)}`) : ""), edit);
     return [{task, node}];
   });
-  const list = element("div", "");
-  if (full) {
+  const list = element("div", "panel task-list");
+  if (tasks.length) {
     const search = element("input", "search");
     search.type = "search";
     search.value = taskQuery;
     search.placeholder = "搜索任务标题";
     search.setAttribute("aria-label", "搜索任务标题");
-    const filters = [["all", "全部"], ["due", "有截止"], ["todo", "待办"]];
+    const filters = editorFilters;
     const buttons = filters.map(([key, label]) => choice(label, key === taskFilter, () => {
       taskFilter = key;
       update();
@@ -255,24 +292,46 @@ function taskControls(full = false) {
     function update() {
       buttons.forEach((button, index) => button.setAttribute("aria-pressed", filters[index][0] === taskFilter));
       const query = taskQuery.trim().toLocaleLowerCase();
-      const matches = active.filter(({task}) => task.title.toLocaleLowerCase().includes(query) &&
-        (taskFilter === "all" || Boolean(task.due) === (taskFilter === "due")));
-      list.replaceChildren(matches.length ? element("ul", "rows", ...matches.map(({node}) => node))
-        : element("p", "empty", "没有匹配的未完成任务"));
+      const matches = tasks.filter(({task}) => task.title.toLocaleLowerCase().includes(query) &&
+        (taskFilter === "all" || (taskFilter === "done" ? task.done
+          : !task.done && (taskFilter !== "due" || task.due))));
+      matches.sort((a, b) => (localDeadline(a.task.due) || "~").localeCompare(localDeadline(b.task.due) || "~"));
+      list.replaceChildren();
+      for (const [label, include] of [
+        ["截止", task => !task.done && task.due],
+        ["待办", task => !task.done && !task.due],
+        ["已完成", task => task.done],
+      ]) {
+        const rows = matches.filter(({task}) => include(task));
+        if (rows.length) list.append(element("h2", "task-group", label),
+          element("ul", "rows", ...rows.map(({node}) => node)));
+      }
+      if (!matches.length) list.append(element("p", "empty", "没有符合条件的任务"));
     }
     search.addEventListener("input", () => { taskQuery = search.value; update(); });
-    card.append(search, element("div", "switch", ...buttons));
+    card.append(element("div", "switch", ...buttons), search);
     update();
   } else {
-    list.append(active.length ? element("ul", "rows", ...active.slice(0, 5).map(({node}) => node))
-      : element("p", "empty", "没有未完成的任务"));
-    if (active.length > 5) list.append(link(`查看全部 ${active.length} 项 ›`, "#tasks"));
+    list.append(element("p", "empty", "没有未完成的任务"));
   }
   card.append(list);
+  if (taskClient) {
+    const disconnect = element("button", "text-button", "断开 GitHub");
+    disconnect.type = "button";
+    disconnect.addEventListener("click", () => {
+      if (taskBusy || refresh.disabled) return;
+      taskClient = null;
+      taskSnapshot = null;
+      clearTaskDraft();
+      taskMessage = "";
+      render();
+    });
+    card.append(disconnect);
+  }
   return card;
 }
 
-async function changeTask(tasks, addedId) {
+async function changeTask(tasks, {action, addedId}) {
   if (taskBusy || refresh.disabled) return;
   const demo = data.mode === "demo";
   taskBusy = true;
@@ -285,15 +344,20 @@ async function changeTask(tasks, addedId) {
   } catch (error) {
     taskMessage = error.message;
     try {
-      taskSnapshot = await taskClient.read();
+      updateTaskSnapshot(await taskClient.read());
       saved = Boolean(addedId && taskSnapshot.tasks.some(task => task?.id === addedId));
     } catch {
       taskMessage += " 请手动刷新后再操作。";
     }
   } finally {
     if (saved) {
-      if (addedId) draftTitle = draftDue = draftId = "";
-      taskMessage = demo ? "已更新示例清单" : "已保存到 GitHub，下次出图时同步到 Kindle";
+      if (action === "add" || action === "edit") clearTaskDraft();
+      if (action === "add") {
+        taskFilter = "open";
+        taskQuery = "";
+      }
+      const feedback = {add: "任务已添加", edit: "修改已保存", complete: "已标为完成", reopen: "已恢复为进行中"};
+      taskMessage = demo ? feedback[action] : `${feedback[action]} · 已保存到 GitHub`;
     }
     taskBusy = false;
     render();
@@ -324,19 +388,18 @@ function schedule() {
 }
 
 function tasks() {
+  hero("待办", [dateLabel(data.today), data.weekday].join(" · "));
   if (data.mode === "demo" || data.task_editor) {
-    hero("任务", "新增和标完成");
-    main.append(taskControls(true));
+    main.append(taskControls());
     return;
   }
-  hero("任务", "逾期、七天内的截止与无截止待办");
   const search = element("input", "search");
   search.type = "search";
   search.value = taskQuery;
   search.placeholder = "搜索任务标题";
   search.setAttribute("aria-label", "搜索任务标题");
   const results = element("section", "panel");
-  const filters = [["all", "全部"], ["due", "有截止"], ["todo", "待办"]];
+  const filters = [["open", "全部"], ["due", "有截止"], ["todo", "待办"]];
   const buttons = filters.map(([name, label]) => choice(label, name === taskFilter, () => {
     taskFilter = name;
     update();
@@ -353,14 +416,18 @@ function tasks() {
       : element("p", "empty", query ? "没有匹配的任务" : "暂无任务"));
   }
   search.addEventListener("input", () => { taskQuery = search.value; update(); });
-  main.append(search, element("div", "switch", ...buttons), results);
+  const filter = element("details", "task-filters", element("summary", "", "搜索与筛选"),
+    search, element("div", "switch", ...buttons));
+  filter.open = Boolean(taskQuery || taskFilter !== "open");
+  main.append(filter, results);
   update();
 }
 
 function weather() {
-  hero("七天天气", data.weather.location);
+  hero("天气", data.weather.location);
   showAlerts();
-  const card = element("section", "panel");
+  main.append(currentWeather());
+  const card = panel("七天预报", null);
   for (const day of data.weather.forecast) {
     const heading = element("span", "forecast-info", `${day.label} `,
       element("span", "date", dateLabel(day.date)), glyph(day.icon), day.condition || "暂无预报");
@@ -373,18 +440,22 @@ function weather() {
   if (data.weather.providers.length) main.append(element("p", "source", "天气来源：",
     ...data.weather.providers.flatMap((provider, index) => [index ? " · " : "", link(provider.name, provider.url, "")])));
   for (const credit of data.weather.alert_credits) main.append(element("p", "source", credit));
-  main.append(link("‹ 返回总览", "#overview"));
+  main.append(element("p", "source", link("打开 Kindle 图片版", "../output.png")));
 }
 
-const views = { overview, schedule, tasks, weather };
+const views = { tasks, schedule, weather };
 function render() {
   const requested = location.hash.slice(1);
-  const current = Object.hasOwn(views, requested) &&
-    ((requested === "tasks" && data?.task_editor) || data?.personal ||
-      !["schedule", "tasks"].includes(requested)) ? requested : "overview";
+  const sections = {
+    tasks: Boolean(data && (data.personal || data.task_editor || data.mode === "demo")),
+    schedule: Boolean(data?.personal),
+    weather: true,
+  };
+  const current = Object.hasOwn(views, requested) && sections[requested]
+    ? requested : sections.tasks ? "tasks" : "weather";
+  showStatus(current);
   for (const item of nav) {
-    item.hidden = Boolean(data && !data.personal && item.dataset.view !== "overview" &&
-      !(item.dataset.view === "tasks" && data.task_editor));
+    item.hidden = !sections[item.dataset.view];
     if (item.dataset.view === current) item.setAttribute("aria-current", "page");
     else item.removeAttribute("aria-current");
   }
@@ -410,9 +481,11 @@ async function load() {
         ...snapshot.todos.map(title => ({title})),
       ]} : null;
       taskMessage = "";
-      draftTitle = draftDue = draftId = "";
+      clearTaskDraft();
+      taskFilter = "open";
+      taskQuery = "";
     } else if (taskClient) {
-      try { taskSnapshot = await taskClient.read(); }
+      try { updateTaskSnapshot(await taskClient.read()); }
       catch (error) { taskMessage = error.message; }
     }
     data = snapshot;
@@ -421,7 +494,6 @@ async function load() {
     issue = String(error);
   } finally {
     refresh.disabled = false;
-    showStatus();
     render();
   }
 }
