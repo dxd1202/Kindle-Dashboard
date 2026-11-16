@@ -3,6 +3,10 @@
 const main = document.querySelector("#main");
 const status = document.querySelector("#status");
 const refresh = document.querySelector("#refresh");
+const updateButton = document.querySelector("#update-dashboard");
+const updateForm = document.querySelector("#update-form");
+const updateToken = document.querySelector("#update-token");
+const updateStatus = document.querySelector("#update-status");
 const nav = [...document.querySelectorAll("[data-view]")];
 const beijingTime = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
@@ -25,7 +29,8 @@ let draftDue = "";
 let draftId = "";
 let editingTask = null;
 let calendarDraft = null;
-let calendarToken = "";
+let workflowConnection = null;
+let dashboardBusy = false;
 let calendarBusy = false;
 let calendarMessage = "";
 let calendarRun = "";
@@ -64,6 +69,16 @@ function link(label, target, className = "link") {
   const node = element("a", className, label);
   node.href = target;
   return node;
+}
+
+function sameWorkflowTarget(left, right) {
+  return Boolean(left && right && left.repository === right.repository && left.branch === right.branch);
+}
+
+function workflowToken(target) {
+  if (sameWorkflowTarget(workflowConnection?.target, target)) return workflowConnection.token;
+  if (sameWorkflowTarget(data.task_editor, target)) return taskClient?.token || "";
+  return "";
 }
 
 function glyph(value) {
@@ -426,13 +441,11 @@ function calendarForm(target) {
   token.type = "password";
   token.autocomplete = "off";
   token.disabled = calendarBusy;
-  const sharedToken = data.task_editor?.repository === target.repository &&
-    data.task_editor.branch === target.branch ? taskClient?.token : "";
-  const existing = calendarToken || sharedToken;
+  const existing = workflowToken(target);
   token.required = !existing;
   form.append(element("label", "editor-field", existing ? "GitHub 令牌（可更换）" : "GitHub 令牌（Actions 读写）", token));
   const save = element("button", "primary", "保存");
-  save.disabled = calendarBusy || draft.revision !== target.revision;
+  save.disabled = calendarBusy || dashboardBusy || draft.revision !== target.revision;
   const cancel = choice("取消", false, () => {
     calendarDraft = null;
     calendarMessage = calendarRun = "";
@@ -443,7 +456,7 @@ function calendarForm(target) {
   form.append(element("div", "editor-actions", save, cancel));
   form.addEventListener("submit", async event => {
     event.preventDefault();
-    if (save.disabled || refresh.disabled || !draft.title.trim()) return;
+    if (save.disabled || refresh.disabled || dashboardBusy || !draft.title.trim()) return;
     const auth = token.value.trim() || existing;
     if (!auth) return;
     if (draft.end && draft.end <= draft.start) {
@@ -451,14 +464,14 @@ function calendarForm(target) {
       render();
       return;
     }
-    calendarToken = auth;
     calendarBusy = true;
     calendarRun = "";
     calendarMessage = "正在提交…";
     render();
     try {
-      await publishCalendarEdit(target, calendarToken, draft, (message, runUrl) => {
-        calendarMessage = message;
+      await runDashboardWorkflow(target, auth, {calendar_change: JSON.stringify(draft)}, (_, runUrl) => {
+        workflowConnection = {target, token: auth};
+        calendarMessage = "已提交，正在等待 GitHub 保存和发布…";
         calendarRun = runUrl;
         render();
       });
@@ -466,7 +479,7 @@ function calendarForm(target) {
       calendarDraft = null;
       calendarMessage = "已保存并发布。";
     } catch (error) {
-      calendarMessage = error.message;
+      calendarMessage = calendarRun ? `${error.message} 请先确认日程是否已保存，再重试。` : error.message;
     } finally {
       calendarBusy = false;
       if (!calendarDraft) await load();
@@ -598,6 +611,9 @@ function render() {
   const current = Object.hasOwn(views, requested) && sections[requested]
     ? requested : sections.tasks ? "tasks" : "weather";
   showStatus(current);
+  updateButton.hidden = !data?.dashboard_update;
+  updateButton.disabled = dashboardBusy || calendarBusy;
+  if (updateButton.hidden) showUpdateForm(false);
   for (const item of nav) {
     item.hidden = !sections[item.dataset.view];
     if (item.dataset.view === current) item.setAttribute("aria-current", "page");
@@ -608,7 +624,7 @@ function render() {
   else if (issue) main.append(link("打开 Kindle 图片版", "../output.png"));
 }
 
-async function load() {
+async function load(publishRun) {
   if (refresh.disabled || taskBusy || calendarBusy) return;
   refresh.disabled = true;
   try {
@@ -634,11 +650,16 @@ async function load() {
     }
     if (data && (data.calendar_editor?.repository !== snapshot.calendar_editor?.repository ||
                  data.calendar_editor?.branch !== snapshot.calendar_editor?.branch)) {
-      calendarToken = calendarMessage = calendarRun = savedCalendarRevision = "";
+      calendarMessage = calendarRun = savedCalendarRevision = "";
       calendarDraft = null;
     }
     data = snapshot;
+    if (workflowConnection && ![data.dashboard_update, data.calendar_editor]
+        .some(target => sameWorkflowTarget(workflowConnection.target, target))) {
+      workflowConnection = null;
+    }
     issue = "";
+    return publishRun === snapshot.dashboard_update?.run_id;
   } catch (error) {
     issue = String(error);
   } finally {
@@ -647,7 +668,71 @@ async function load() {
   }
 }
 
-refresh.addEventListener("click", load);
+function showUpdateForm(open) {
+  updateForm.hidden = !open;
+  updateButton.setAttribute("aria-expanded", String(open));
+  if (open) updateToken.focus();
+  else updateToken.value = "";
+}
+
+function showUpdateStatus(message, runUrl, failed = false) {
+  updateStatus.replaceChildren(message);
+  if (runUrl) updateStatus.append(" ", link("查看运行记录", runUrl));
+  updateStatus.hidden = false;
+  updateStatus.classList.toggle("error", failed);
+}
+
+async function updateDashboard(token) {
+  const target = data?.dashboard_update;
+  if (!target || dashboardBusy || calendarBusy || refresh.disabled || !token) return;
+  dashboardBusy = true;
+  showUpdateForm(false);
+  showUpdateStatus("正在请求更新…");
+  render();
+  let runUrl = "";
+  try {
+    const runId = await runDashboardWorkflow(target, token, {demo: false}, (_, url) => {
+      runUrl = url;
+      workflowConnection = {target, token};
+      showUpdateStatus("更新已提交，正在生成并发布看板…", runUrl);
+    });
+    showUpdateStatus("工作流已完成，正在读取新版看板…", runUrl);
+    for (let attempt = 0; attempt < 6; attempt++) {
+      if (await load(runId)) {
+        showUpdateStatus("看板已更新，本页已载入新版。", runUrl);
+        return;
+      }
+      if (attempt < 5) await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    showUpdateStatus("工作流已完成，网页版稍后可见。点 ↻ 可以重新读取。", runUrl);
+  } catch (error) {
+    showUpdateStatus(error.message, runUrl, true);
+    if (!runUrl && [401, 403, 404].includes(error.status)) showUpdateForm(true);
+  } finally {
+    dashboardBusy = false;
+    render();
+  }
+}
+
+updateButton.addEventListener("click", () => {
+  if (dashboardBusy || calendarBusy || refresh.disabled) return;
+  if (!updateForm.hidden) {
+    showUpdateForm(false);
+    return;
+  }
+  const token = workflowToken(data.dashboard_update);
+  if (token) updateDashboard(token);
+  else showUpdateForm(true);
+});
+updateForm.addEventListener("submit", event => {
+  event.preventDefault();
+  updateDashboard(updateToken.value.trim());
+});
+document.querySelector("#cancel-update").addEventListener("click", () => {
+  showUpdateForm(false);
+  updateButton.focus();
+});
+refresh.addEventListener("click", () => load());
 window.addEventListener("hashchange", () => {
   render();
   window.scrollTo(0, 0);

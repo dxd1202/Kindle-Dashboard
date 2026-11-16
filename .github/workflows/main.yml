@@ -113,6 +113,9 @@ jobs:
             if [ "$MOBILE_TASK_EDIT" = true ] && [ "$MOBILE_DATA" != demo ]; then
               mobile_args+=(--web-task-target "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$TASKS_FILE")
             fi
+            if [ "$GITHUB_REF_TYPE" = branch ]; then
+              export MOBILE_PUBLISH_RUN="$GITHUB_RUN_ID"
+            fi
             python main.py --output "$publish_dir/output.png" "${mobile_args[@]}"
           fi
           touch "$publish_dir/.nojekyll"

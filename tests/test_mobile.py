@@ -23,7 +23,7 @@ class MobileTests(unittest.TestCase):
             output = Path(directory)
             export_mobile(self.demo, output, mode="demo", show_locations=False)
             data = json.loads((output / "dashboard.json").read_text())
-            self.assertTrue({"index.html", "app.js", "task-sync.js", "calendar-sync.js", "app.css", "qweather-icons.ttf",
+            self.assertTrue({"index.html", "app.js", "task-sync.js", "workflow-sync.js", "app.css", "qweather-icons.ttf",
                              "qweather-icons-LICENSE.txt"} <= {file.name for file in output.iterdir()})
             self.assertEqual(data["next_event"], {
                 "time": "14:30", "end": "16:05", "name": "数电实验", "place": "实验室", "day": "今天",
@@ -31,6 +31,20 @@ class MobileTests(unittest.TestCase):
             self.assertEqual(len(data["weather"]["forecast"]), 7)
             self.assertNotIn("task_editor", data)
             self.assertNotIn("calendar_editor", data)
+            self.assertNotIn("dashboard_update", data)
+
+    @patch.dict("os.environ", {"MOBILE_PUBLISH_RUN": "123", "GITHUB_REPOSITORY": "owner/repo",
+                               "GITHUB_REF_NAME": "main"})
+    def test_mobile_export_identifies_the_published_workflow_run(self):
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            export_mobile(replace(self.demo, demo=False), output, mode="weather", show_locations=False)
+            data = json.loads((output / "dashboard.json").read_text())
+            self.assertEqual(data["dashboard_update"], {
+                "repository": "owner/repo", "branch": "main", "run_id": "123",
+            })
+            self.assertNotIn("calendar_editor", data)
+            self.assertNotIn("task_editor", data)
 
     @patch.dict("os.environ", {"ICS_DATA": "", "ICS_FILE": "", "MOBILE_CALENDAR_EDIT": "true",
                                "GITHUB_REPOSITORY": "owner/repo", "GITHUB_REF_NAME": "main"})

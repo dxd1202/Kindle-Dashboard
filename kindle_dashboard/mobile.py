@@ -108,6 +108,13 @@ def mobile_payload(snapshot, *, mode, show_locations=False):
 def export_mobile(snapshot, output, *, mode, show_locations, task_target=None):
     output.mkdir(parents=True, exist_ok=True)
     payload = mobile_payload(snapshot, mode=mode, show_locations=show_locations or snapshot.demo)
+    publish_run = os.environ.get("MOBILE_PUBLISH_RUN", "")
+    if publish_run:
+        payload["dashboard_update"] = {
+            "repository": os.environ["GITHUB_REPOSITORY"],
+            "branch": os.environ["GITHUB_REF_NAME"],
+            "run_id": publish_run,
+        }
     if task_target and not snapshot.demo:
         payload["task_editor"] = task_target
     if (mode == "personal" and payload["personal"] and not snapshot.demo
@@ -130,7 +137,7 @@ def export_mobile(snapshot, output, *, mode, show_locations, task_target=None):
                              for event in entries_by_date.get(day["date"], ())]
     with TemporaryDirectory(dir=output) as stage_dir:
         stage = Path(stage_dir)
-        for name in ("index.html", "app.css", "app.js", "task-sync.js", "calendar-sync.js"):
+        for name in ("index.html", "app.css", "app.js", "task-sync.js", "workflow-sync.js"):
             copyfile(WEB / name, stage / name)
         copyfile(ASSETS / "qweather-icons.ttf", stage / "qweather-icons.ttf")
         copyfile(ROOT / "licenses/QWeather-Icons-MIT.txt", stage / "qweather-icons-LICENSE.txt")

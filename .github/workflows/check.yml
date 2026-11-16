@@ -26,7 +26,7 @@ jobs:
           python main.py --demo --output build/demo.png --web-output build/mobile
           node --check build/mobile/app.js
           node --check build/mobile/task-sync.js
-          node --check build/mobile/calendar-sync.js
+          node --check build/mobile/workflow-sync.js
           python - <<'PY'
           from pathlib import Path
           from struct import unpack
