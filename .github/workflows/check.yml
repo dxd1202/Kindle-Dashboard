@@ -21,9 +21,10 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run regression tests
         run: python -m unittest discover -s tests -v
-      - name: Render the offline demo and verify the PNG
+      - name: Build and verify the Kindle and mobile demos
         run: |
-          python main.py --demo --output build/demo.png
+          python main.py --demo --output build/demo.png --web-output build/mobile
+          node --check build/mobile/app.js
           python - <<'PY'
           from pathlib import Path
           from struct import unpack

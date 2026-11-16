@@ -36,13 +36,13 @@ def demo_data(now):
     }
     schedule = {
         now.date(): [
-            {"time": "09:50", "name": "大学物理", "place": "六教"},
-            {"time": "14:30", "name": "数电实验", "place": "实验室"},
-            {"time": "19:00", "name": "排球训练", "place": "综合体育馆"},
+            {"time": "09:50", "end": "11:25", "name": "大学物理", "place": "六教"},
+            {"time": "14:30", "end": "16:05", "name": "数电实验", "place": "实验室"},
+            {"time": "19:00", "end": "21:00", "name": "排球训练", "place": "综合体育馆"},
         ],
         now.date() + timedelta(days=1): [
-            {"time": "08:00", "name": "数据结构", "place": "三教"},
-            {"time": "15:20", "name": "法语课", "place": "文南楼"},
+            {"time": "08:00", "end": "09:35", "name": "数据结构", "place": "三教"},
+            {"time": "15:20", "end": "16:55", "name": "法语课", "place": "文南楼"},
         ],
     }
     return forecast, air_quality, schedule

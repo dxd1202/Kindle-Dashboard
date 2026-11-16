@@ -60,9 +60,26 @@ def collect_weather():
     return weather
 
 
-def build_dashboard(*, demo, offline, hide_personal):
-    from .layout import compose
+@dataclass
+class DashboardSnapshot:
+    now: datetime
+    semester: dict | None
+    weather: WeatherSnapshot
+    schedule: dict
+    schedule_status: str
+    deadlines: list
+    todos: list
+    demo: bool
+    hide_personal: bool
 
+    def layout(self):
+        from .layout import compose
+
+        return compose(self.now, self.semester, self.weather, self.schedule, self.schedule_status,
+                       self.deadlines, self.todos, hide_personal=self.hide_personal, demo=self.demo)
+
+
+def collect_dashboard(*, demo, offline, hide_personal, include_end=False):
     now = DEMO_NOW if demo else datetime.now(BEIJING)
     settings = DEMO_SETTINGS if demo else load_settings()
     schedule, schedule_status = {}, "日程未配置"
@@ -90,11 +107,14 @@ def build_dashboard(*, demo, offline, hide_personal):
             from .sources.timetable import get_two_day_schedule
 
             calendar_path = settings.get("calendar")
-            schedule, schedule_status = get_two_day_schedule(
-                now, ROOT / calendar_path if calendar_path else None
-            )
+            path = ROOT / calendar_path if calendar_path else None
+            schedule, schedule_status = get_two_day_schedule(now, path, include_end=include_end)
         tasks_path = None if demo else task_file(settings)
         deadlines, todos = dashboard_tasks(settings, now.date(), path=tasks_path)
 
-    return compose(now, settings.get("semester"), weather, schedule, schedule_status,
-                   deadlines, todos, hide_personal=hide_personal, demo=demo)
+    return DashboardSnapshot(now, settings.get("semester"), weather, schedule, schedule_status,
+                             deadlines, todos, demo, hide_personal)
+
+
+def build_dashboard(*, demo, offline, hide_personal):
+    return collect_dashboard(demo=demo, offline=offline, hide_personal=hide_personal).layout()

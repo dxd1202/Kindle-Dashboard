@@ -8,6 +8,7 @@
 | --- | --- |
 | 在电脑上做出上面这张图 | [生成第一张图](#1-生成第一张图) |
 | 换成自己的课表、待办和天气 | [换成自己的数据](#2-换成自己的数据) |
+| 在手机上切换日程、筛选任务 | [手机版看板](#手机版看板) |
 | 让 Kindle 定时显示看板 | [发布并接入 Kindle](#3-发布并接入-kindle) |
 
 ## 1. 生成第一张图
@@ -103,6 +104,19 @@ fi
 3. **最后换成自己的数据。** 在 GitHub Actions 中配置自己的日程、任务和学期参数。手动出图成功后，再按 [定时更新说明](docs/pages.md#定时更新) 设置定时发布。
 
 GitHub Pages 上的图片可被公开访问。发布真实日程前，先用无痕窗口确认图片里展示的是你愿意公开的内容。
+
+## 手机版看板
+
+手机版提供总览、今天和明天的日程、可筛选的任务和七天天气。部署后，在 Pages 站点地址末尾加 `/mobile/`。首次发布默认使用虚构的示例数据。你的 Kindle 仍从 `/output.png` 下载图片。
+
+在电脑上预览手机版示例：
+
+```bash
+.venv/bin/python main.py --demo --output build/site/output.png --web-output build/site/mobile
+.venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory build/site
+```
+
+在同一台电脑的浏览器打开 `http://127.0.0.1:8000/mobile/`。手机使用部署后的 Pages 地址，打开后可从华为浏览器菜单选择「添加至桌面」。个人数据的发布方式见 [Pages 指南](docs/pages.md#手机版数据范围)。
 
 ## 常见问题
 

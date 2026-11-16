@@ -149,12 +149,29 @@ def courses_between(calendar, first_day, days, *, event_details=None):
     return schedule
 
 
-def get_two_day_schedule(now, local_path=None):
+def get_two_day_schedule(now, local_path=None, *, include_end=False):
+    def end_details(event, master, original_start, local, _recurrence_id):
+        if not isinstance(original_start, datetime):
+            return {}
+        for source in (event, master):
+            if "DURATION" in source:
+                duration = source.decoded("DURATION")
+            elif "DTSTART" in source and "DTEND" in source:
+                duration = event_datetime(source.decoded("DTEND"), BEIJING) - event_datetime(
+                    source.decoded("DTSTART"), BEIJING,
+                )
+            else:
+                continue
+            end = local + duration
+            return {"end": end.strftime("%H:%M" if end.date() == local.date() else "%m/%d %H:%M")}
+        return {}
+
     try:
         source = read_calendar(local_path)
         if not source:
             return {}, "日程未配置"
-        return courses_between(Calendar.from_ical(source), now.date(), 2), "暂无日程"
+        return courses_between(Calendar.from_ical(source), now.date(), 2,
+                               event_details=end_details if include_end else None), "暂无日程"
     except (OSError, ValueError, TypeError, KeyError, OverflowError) as error:
         print(f"[日程] 读取失败: {type(error).__name__}")
         return {}, "日程读取失败"

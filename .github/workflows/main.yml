@@ -32,11 +32,13 @@ jobs:
           ICS_FILE: ${{ vars.ICS_FILE || '2026Autumn.ics' }}
           TASKS_FILE: ${{ vars.TASKS_FILE || 'tasks.local.json' }}
           DEMO: ${{ inputs.demo }}
+          MOBILE_DATA: ${{ vars.MOBILE_DATA || 'demo' }}
+          MOBILE_SHOW_LOCATIONS: ${{ vars.MOBILE_SHOW_LOCATIONS }}
           PYTHONIOENCODING: utf-8
         run: |
           publish_dir="$(mktemp -d "$RUNNER_TEMP/kindle-pages.XXXXXX")"
           if [ "$DEMO" = true ]; then
-            python main.py --demo --output "$publish_dir/output.png"
+            python main.py --demo --output "$publish_dir/output.png" --web-output "$publish_dir/mobile"
           else
           python - <<'PY'
           from datetime import date
@@ -73,7 +75,11 @@ jobs:
           except (OSError, ValueError):
               raise SystemExit(f"{tasks_path} must contain a valid JSON array")
           PY
-            python main.py --output "$publish_dir/output.png"
+            mobile_args=(--web-output "$publish_dir/mobile" --web-data "$MOBILE_DATA")
+            if [ "$MOBILE_DATA" = personal ] && [ "$MOBILE_SHOW_LOCATIONS" = true ]; then
+              mobile_args+=(--web-locations)
+            fi
+            python main.py --output "$publish_dir/output.png" "${mobile_args[@]}"
           fi
           touch "$publish_dir/.nojekyll"
           printf 'directory=%s\n' "$publish_dir" >> "$GITHUB_OUTPUT"

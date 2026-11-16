@@ -22,6 +22,17 @@ def lunar_label(day):
     return f"农历{leap}{months[lunar.month - 1]}月{day_name}"
 
 
+def semester_progress(today, semester):
+    start = date.fromisoformat(semester["start"])
+    weeks = int(semester["weeks"])
+    if weeks < 1:
+        raise ValueError("学期总周数至少为 1")
+    elapsed = (today - start).days
+    week = min(weeks, max(1, elapsed // 7 + 1))
+    status = "尚未开学" if elapsed < 0 else "学期已结束" if elapsed >= weeks * 7 else f"第 {week} / {weeks} 周"
+    return status, week / weeks if elapsed >= 0 else 0
+
+
 def add_header(widgets, today, semester):
     text, rect, line = widgets.text, widgets.rect, widgets.line
     text(LEFT, 12, f"{today.month}月{today.day}日", 102, bold=True)
@@ -30,17 +41,10 @@ def add_header(widgets, today, semester):
     text(745, 64, f"{today.year} 年第 {today.timetuple().tm_yday} 天", 38, gray=MUTED,
          max_width=286, fit_width=True)
     if semester:
-        start = date.fromisoformat(semester["start"])
-        weeks = int(semester["weeks"])
-        if weeks < 1:
-            raise ValueError("学期总周数至少为 1")
-        elapsed = (today - start).days
-        week = min(weeks, max(1, elapsed // 7 + 1))
-        status = "尚未开学" if elapsed < 0 else "学期已结束" if elapsed >= weeks * 7 else f"第 {week} / {weeks} 周"
+        status, progress = semester_progress(today, semester)
         text(RIGHT - 320, 35, "学期进度", 36, gray=MUTED)
         text(RIGHT, 28, status, 43, align="right", bold=True)
         rect(RIGHT - 320, 86, RIGHT, 95, 218)
-        progress = week / weeks if elapsed >= 0 else 0
         rect(RIGHT - 320, 86, RIGHT - 320 + round(320 * progress), 95, DARK)
     else:
         text(RIGHT, 45, "学期进度未配置", 33, gray=MUTED, align="right")
